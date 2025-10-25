@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "JobPoper Authentication API",
-		"description": "Complete authentication system with phone verification, PIN-based auth, and JWT tokens",
+		"name": "JobPoper API",
+		"description": "Complete JobPoper API with authentication, job management, and user features",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -276,6 +276,441 @@
 				}
 			],
 			"description": "Authentication endpoints"
+		},
+		{
+			"name": "Jobs",
+			"item": [
+				{
+					"name": "Get All Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs?page=1&limit=10&jobType=cleaning&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "jobType",
+									"value": "cleaning",
+									"description": "Filter by job type (cleaning, maintenance, delivery, moving, gardening, pet_care, tutoring, tech_support, other)"
+								},
+								{
+									"key": "urgency",
+									"value": "Urgent",
+									"description": "Filter by urgency (Urgent, High Priority, Normal, Flexible, Ongoing)"
+								},
+								{
+									"key": "location",
+									"value": "New York",
+									"description": "Filter by location"
+								},
+								{
+									"key": "search",
+									"value": "house",
+									"description": "Search in title, description, and location"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Get all jobs with pagination and filtering (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Hot Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/hot?location=New York&page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"hot"
+							],
+							"query": [
+								{
+									"key": "location",
+									"value": "New York",
+									"description": "Required: Location to filter urgent jobs"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Get urgent jobs by location with pagination and sorting (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Normal Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/normal?location=New York&page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"normal"
+							],
+							"query": [
+								{
+									"key": "location",
+									"value": "New York",
+									"description": "Required: Location to filter normal jobs"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Get normal jobs by location with pagination and sorting (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Jobs by Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/type/cleaning?page=1&limit=10&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"type",
+								"cleaning"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "urgency",
+									"value": "Urgent",
+									"description": "Filter by urgency"
+								},
+								{
+									"key": "location",
+									"value": "New York",
+									"description": "Filter by location"
+								},
+								{
+									"key": "search",
+									"value": "house",
+									"description": "Search in title, description, and location"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Get jobs by specific type with pagination and filtering (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Job by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/{{job_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"{{job_id}}"
+							]
+						},
+						"description": "Get a specific job by ID (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Need House Cleaner\",\n  \"description\": \"Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.\",\n  \"cost\": \"$50/hour\",\n  \"location\": \"Downtown, NYC\",\n  \"jobType\": \"cleaning\",\n  \"urgency\": \"Urgent\",\n  \"scheduledDate\": \"2024-01-15\",\n  \"scheduledTime\": \"10:00 AM\",\n  \"attachments\": [\n    \"https://example.com/image1.jpg\",\n    \"https://example.com/image2.jpg\"\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/jobs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs"
+							]
+						},
+						"description": "Create a new job (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Jobs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/my-jobs?page=1&limit=10&status=open&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"my-jobs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "status",
+									"value": "open",
+									"description": "Filter by status (open, completed, cancelled)"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Get jobs posted by current user (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Job",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated House Cleaning Job\",\n  \"description\": \"Updated description for the house cleaning job.\",\n  \"cost\": \"$60/hour\",\n  \"urgency\": \"High Priority\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/jobs/{{job_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"{{job_id}}"
+							]
+						},
+						"description": "Update a job (requires authentication, only job owner can update)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Job",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/{{job_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"{{job_id}}"
+							]
+						},
+						"description": "Delete a job (requires authentication, only job owner can delete)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Job Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"completed\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/jobs/{{job_id}}/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"{{job_id}}",
+								"status"
+							]
+						},
+						"description": "Update job status (requires authentication, only job owner can update). Status options: open, completed, cancelled"
+					},
+					"response": []
+				}
+			],
+			"description": "Job management endpoints"
 		},
 		{
 			"name": "Test Scenarios",
@@ -688,6 +1123,12 @@
 			"value": "123456",
 			"type": "string",
 			"description": "Phone verification code (check server logs in development mode)"
+		},
+		{
+			"key": "job_id",
+			"value": "",
+			"type": "string",
+			"description": "Job ID (set from create job response)"
 		}
 	]
 }
