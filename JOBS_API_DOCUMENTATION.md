@@ -14,18 +14,6 @@ Most endpoints require JWT authentication. Include the token in the Authorizatio
 Authorization: Bearer <your_jwt_token>
 ```
 
-## Job Types
-The following job types are supported:
-- `cleaning` - House cleaning, office cleaning, etc.
-- `maintenance` - Home repairs, equipment maintenance, etc.
-- `delivery` - Package delivery, food delivery, etc.
-- `moving` - Moving services, furniture transport, etc.
-- `gardening` - Lawn care, landscaping, plant care, etc.
-- `pet_care` - Pet walking, pet sitting, grooming, etc.
-- `tutoring` - Educational services, tutoring, etc.
-- `tech_support` - Computer help, IT support, etc.
-- `other` - Any other type of job
-
 ## Urgency Levels
 - `Urgent` - Needs to be done immediately
 - `High Priority` - Should be done soon
@@ -50,7 +38,6 @@ Get all jobs with pagination and filtering options.
 **Query Parameters:**
 - `page` (optional, default: 1) - Page number
 - `limit` (optional, default: 10) - Items per page
-- `jobType` (optional) - Filter by job type
 - `urgency` (optional) - Filter by urgency level
 - `location` (optional) - Filter by location (case-insensitive)
 - `search` (optional) - Search in title, description, and location
@@ -61,7 +48,7 @@ Get all jobs with pagination and filtering options.
 
 **Example Request:**
 ```bash
-GET /api/jobs?page=1&limit=10&jobType=cleaning&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc
+GET /api/jobs?page=1&limit=10&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc
 ```
 
 **Response:**
@@ -76,7 +63,6 @@ GET /api/jobs?page=1&limit=10&jobType=cleaning&urgency=Urgent&location=New York&
         "description": "Looking for a reliable house cleaner...",
         "cost": "$50/hour",
         "location": "Downtown, NYC",
-        "jobType": "cleaning",
         "urgency": "Urgent",
         "scheduledDate": "2024-01-15T00:00:00.000Z",
         "scheduledTime": "10:00 AM",
@@ -138,7 +124,6 @@ GET /api/jobs/hot?location=New York&page=1&limit=10&sortBy=createdAt&sortOrder=d
         "description": "Need immediate house cleaning...",
         "cost": "$50/hour",
         "location": "New York, NY",
-        "jobType": "cleaning",
         "urgency": "Urgent",
         "scheduledDate": "2024-01-15T00:00:00.000Z",
         "scheduledTime": "10:00 AM",
@@ -192,31 +177,7 @@ GET /api/jobs/normal?location=New York&page=1&limit=10&sortBy=createdAt&sortOrde
 
 **Response:** (Same format as Get Hot Jobs, but with urgency: "Normal")
 
-### 4. Get Jobs by Type
-**GET** `/api/jobs/type/:jobType`
-
-Get jobs filtered by specific job type with pagination and filtering.
-
-**Path Parameters:**
-- `jobType - One of the valid job types (cleaning, maintenance, delivery, etc.)
-
-**Query Parameters:**
-- `page` (optional, default: 1) - Page number
-- `limit` (optional, default: 10) - Items per page
-- `urgency` (optional) - Filter by urgency level
-- `location` (optional) - Filter by location (case-insensitive)
-- `search` (optional) - Search in title, description, and location
-- `sortBy` (optional, default: 'createdAt') - Sort by field (createdAt, title, urgency, scheduledDate)
-- `sortOrder` (optional, default: 'desc') - Sort order (asc, desc)
-
-**Example Request:**
-```bash
-GET /api/jobs/type/cleaning?page=1&limit=10&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc
-```
-
-**Response:** (Same format as Get All Jobs)
-
-### 3. Get Job by ID
+### 4. Get Job by ID
 **GET** `/api/jobs/:id`
 
 Get a specific job by its ID.
@@ -282,7 +243,6 @@ Content-Type: application/json
   "description": "Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.",
   "cost": "$50/hour",
   "location": "Downtown, NYC",
-  "jobType": "cleaning",
   "urgency": "Urgent",
   "scheduledDate": "2024-01-15",
   "scheduledTime": "10:00 AM",
@@ -298,7 +258,6 @@ Content-Type: application/json
 - `description` - Job description (max 2000 characters)
 - `cost` - Cost/budget information (max 100 characters)
 - `location` - Job location (max 200 characters)
-- `jobType` - One of the valid job types
 - `urgency` - One of the valid urgency levels
 - `scheduledDate` - Date when job needs to be done (YYYY-MM-DD format, cannot be in the past)
 - `scheduledTime` - Preferred time for the job
@@ -519,7 +478,6 @@ Content-Type: application/json
 - `description`: Required, max 2000 characters
 - `cost`: Required, max 100 characters
 - `location`: Required, max 200 characters
-- `jobType`: Required, must be one of the valid job types
 - `urgency`: Required, must be one of the valid urgency levels
 - `scheduledDate`: Required, cannot be in the past
 - `scheduledTime`: Required
@@ -557,7 +515,6 @@ curl -X POST http://localhost:3001/api/jobs \
     "description": "Looking for a reliable house cleaner...",
     "cost": "$50/hour",
     "location": "Downtown, NYC",
-    "jobType": "cleaning",
     "urgency": "Urgent",
     "scheduledDate": "2024-01-15",
     "scheduledTime": "10:00 AM"
@@ -566,7 +523,7 @@ curl -X POST http://localhost:3001/api/jobs \
 
 ### Get All Jobs
 ```bash
-curl -X GET "http://localhost:3001/api/jobs?page=1&limit=10&jobType=cleaning&sortBy=createdAt&sortOrder=desc"
+curl -X GET "http://localhost:3001/api/jobs?page=1&limit=10&urgency=Urgent&location=New York&sortBy=createdAt&sortOrder=desc"
 ```
 
 ### Get Hot Jobs

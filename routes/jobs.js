@@ -6,7 +6,6 @@ const {
   getAllJobs,
   getHotJobs,
   getNormalJobs,
-  getJobsByType,
   getJobById,
   getMyJobs,
   updateJob,
@@ -18,7 +17,6 @@ const {
 router.get('/', getAllJobs);
 router.get('/hot', getHotJobs);
 router.get('/normal', getNormalJobs);
-router.get('/type/:jobType', getJobsByType);
 router.get('/:id', getJobById);
 
 // Protected routes (require authentication)

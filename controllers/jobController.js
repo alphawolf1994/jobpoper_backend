@@ -10,7 +10,6 @@ const createJob = asyncHandler(async (req, res) => {
     description,
     cost,
     location,
-    jobType,
     urgency,
     scheduledDate,
     scheduledTime,
@@ -18,7 +17,7 @@ const createJob = asyncHandler(async (req, res) => {
   } = req.body;
 
   // Validate required fields
-  if (!title || !description || !cost || !location || !jobType || !urgency || !scheduledDate || !scheduledTime) {
+  if (!title || !description || !cost || !location || !urgency || !scheduledDate || !scheduledTime) {
     return res.status(400).json({
       status: 'error',
       message: 'All required fields must be provided'
@@ -51,7 +50,6 @@ const createJob = asyncHandler(async (req, res) => {
       description,
       cost,
       location,
-      jobType,
       urgency,
       scheduledDate: scheduledDateObj,
       scheduledTime,
@@ -89,7 +87,6 @@ const getAllJobs = asyncHandler(async (req, res) => {
   const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
   
   const {
-    jobType,
     urgency,
     location,
     search
@@ -101,7 +98,6 @@ const getAllJobs = asyncHandler(async (req, res) => {
     status: 'open'  // Only show open jobs
   };
   
-  if (jobType) filter.jobType = jobType;
   if (urgency) filter.urgency = urgency;
   if (location) {
     filter.location = { $regex: location, $options: 'i' };
@@ -170,26 +166,67 @@ const getHotJobs = asyncHandler(async (req, res) => {
     });
   }
 
-  // Build filter object - only show urgent open jobs
-  const filter = { 
-    isActive: true,
-    status: 'open',
-    urgency: 'Urgent',
-    location: { $regex: location, $options: 'i' }
-  };
-
-  // Build sort object
-  const sort = {};
-  sort[sortBy] = sortOrder;
-
   try {
-    const jobs = await Job.find(filter)
-      .populate('postedBy', 'phoneNumber profile.fullName profile.email')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
+    // Use aggregation to match jobs with users whose location matches the query
+    const pipeline = [
+      {
+        $match: {
+          isActive: true,
+          status: 'open',
+          urgency: 'Urgent'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'postedBy',
+          foreignField: '_id',
+          as: 'postedByUser'
+        }
+      },
+      {
+        $unwind: '$postedByUser'
+      },
+      {
+        $match: {
+          'postedByUser.profile.location': { $regex: location, $options: 'i' }
+        }
+      },
+      {
+        $addFields: {
+          postedBy: {
+            phoneNumber: '$postedByUser.phoneNumber',
+            profile: {
+              fullName: '$postedByUser.profile.fullName',
+              email: '$postedByUser.profile.email'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          postedByUser: 0
+        }
+      },
+      {
+        $sort: { [sortBy]: sortOrder }
+      },
+      {
+        $facet: {
+          jobs: [
+            { $skip: skip },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ];
 
-    const total = await Job.countDocuments(filter);
+    const result = await Job.aggregate(pipeline);
+    const jobs = result[0].jobs;
+    const total = result[0].totalCount[0]?.count || 0;
     const totalPages = Math.ceil(total / limit);
 
     res.status(200).json({
@@ -236,26 +273,67 @@ const getNormalJobs = asyncHandler(async (req, res) => {
     });
   }
 
-  // Build filter object - only show normal open jobs
-  const filter = { 
-    isActive: true,
-    status: 'open',
-    urgency: 'Normal',
-    location: { $regex: location, $options: 'i' }
-  };
-
-  // Build sort object
-  const sort = {};
-  sort[sortBy] = sortOrder;
-
   try {
-    const jobs = await Job.find(filter)
-      .populate('postedBy', 'phoneNumber profile.fullName profile.email')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
+    // Use aggregation to match jobs with users whose location matches the query
+    const pipeline = [
+      {
+        $match: {
+          isActive: true,
+          status: 'open',
+          urgency: 'Normal'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'postedBy',
+          foreignField: '_id',
+          as: 'postedByUser'
+        }
+      },
+      {
+        $unwind: '$postedByUser'
+      },
+      {
+        $match: {
+          'postedByUser.profile.location': { $regex: location, $options: 'i' }
+        }
+      },
+      {
+        $addFields: {
+          postedBy: {
+            phoneNumber: '$postedByUser.phoneNumber',
+            profile: {
+              fullName: '$postedByUser.profile.fullName',
+              email: '$postedByUser.profile.email'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          postedByUser: 0
+        }
+      },
+      {
+        $sort: { [sortBy]: sortOrder }
+      },
+      {
+        $facet: {
+          jobs: [
+            { $skip: skip },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ];
 
-    const total = await Job.countDocuments(filter);
+    const result = await Job.aggregate(pipeline);
+    const jobs = result[0].jobs;
+    const total = result[0].totalCount[0]?.count || 0;
     const totalPages = Math.ceil(total / limit);
 
     res.status(200).json({
@@ -277,88 +355,6 @@ const getNormalJobs = asyncHandler(async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch normal jobs',
-      error: error.message
-    });
-  }
-});
-
-// @desc    Get jobs by type with pagination
-// @route   GET /api/jobs/type/:jobType
-// @access  Public
-const getJobsByType = asyncHandler(async (req, res) => {
-  const { jobType } = req.params;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
-  const sortBy = req.query.sortBy || 'createdAt';
-  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-
-  const {
-    urgency,
-    location,
-    search
-  } = req.query;
-
-  // Validate job type
-  const validJobTypes = ['cleaning', 'maintenance', 'delivery', 'moving', 'gardening', 'pet_care', 'tutoring', 'tech_support', 'other'];
-  if (!validJobTypes.includes(jobType)) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Invalid job type'
-    });
-  }
-
-  // Build filter object - only show open jobs
-  const filter = { 
-    isActive: true,
-    jobType,
-    status: 'open'  // Only show open jobs
-  };
-  
-  if (urgency) filter.urgency = urgency;
-  if (location) {
-    filter.location = { $regex: location, $options: 'i' };
-  }
-  if (search) {
-    filter.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-      { location: { $regex: search, $options: 'i' } }
-    ];
-  }
-
-  // Build sort object
-  const sort = {};
-  sort[sortBy] = sortOrder;
-
-  try {
-    const jobs = await Job.find(filter)
-      .populate('postedBy', 'phoneNumber profile.fullName profile.email')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Job.countDocuments(filter);
-    const totalPages = Math.ceil(total / limit);
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        jobs,
-        jobType,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalJobs: total,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch jobs by type',
       error: error.message
     });
   }
@@ -632,7 +628,6 @@ module.exports = {
   getAllJobs,
   getHotJobs,
   getNormalJobs,
-  getJobsByType,
   getJobById,
   getMyJobs,
   updateJob,

@@ -286,7 +286,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/api/jobs?page=1&limit=10&jobType=cleaning&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc",
+							"raw": "{{base_url}}/api/jobs?page=1&limit=10&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc",
 							"host": [
 								"{{base_url}}"
 							],
@@ -304,11 +304,6 @@
 									"key": "limit",
 									"value": "10",
 									"description": "Items per page (default: 10)"
-								},
-								{
-									"key": "jobType",
-									"value": "cleaning",
-									"description": "Filter by job type (cleaning, maintenance, delivery, moving, gardening, pet_care, tutoring, tech_support, other)"
 								},
 								{
 									"key": "urgency",
@@ -436,64 +431,6 @@
 					"response": []
 				},
 				{
-					"name": "Get Jobs by Type",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/jobs/type/cleaning?page=1&limit=10&urgency=Urgent&location=New York&search=house&sortBy=createdAt&sortOrder=desc",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"jobs",
-								"type",
-								"cleaning"
-							],
-							"query": [
-								{
-									"key": "page",
-									"value": "1",
-									"description": "Page number (default: 1)"
-								},
-								{
-									"key": "limit",
-									"value": "10",
-									"description": "Items per page (default: 10)"
-								},
-								{
-									"key": "urgency",
-									"value": "Urgent",
-									"description": "Filter by urgency"
-								},
-								{
-									"key": "location",
-									"value": "New York",
-									"description": "Filter by location"
-								},
-								{
-									"key": "search",
-									"value": "house",
-									"description": "Search in title, description, and location"
-								},
-								{
-									"key": "sortBy",
-									"value": "createdAt",
-									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
-								},
-								{
-									"key": "sortOrder",
-									"value": "desc",
-									"description": "Sort order (asc, desc)"
-								}
-							]
-						},
-						"description": "Get jobs by specific type with pagination and filtering (public endpoint)"
-					},
-					"response": []
-				},
-				{
 					"name": "Get Job by ID",
 					"request": {
 						"method": "GET",
@@ -530,7 +467,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Need House Cleaner\",\n  \"description\": \"Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.\",\n  \"cost\": \"$50/hour\",\n  \"location\": \"Downtown, NYC\",\n  \"jobType\": \"cleaning\",\n  \"urgency\": \"Urgent\",\n  \"scheduledDate\": \"2024-01-15\",\n  \"scheduledTime\": \"10:00 AM\",\n  \"attachments\": [\n    \"https://example.com/image1.jpg\",\n    \"https://example.com/image2.jpg\"\n  ]\n}",
+							"raw": "{\n  \"title\": \"Need House Cleaner\",\n  \"description\": \"Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.\",\n  \"cost\": \"$50/hour\",\n  \"location\": \"Downtown, NYC\",\n  \"urgency\": \"Urgent\",\n  \"scheduledDate\": \"2024-01-15\",\n  \"scheduledTime\": \"10:00 AM\",\n  \"attachments\": [\n    \"https://example.com/image1.jpg\",\n    \"https://example.com/image2.jpg\"\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
