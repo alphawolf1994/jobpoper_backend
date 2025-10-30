@@ -215,7 +215,7 @@ const login = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/complete-profile
 // @access  Private
 const completeProfile = asyncHandler(async (req, res) => {
-  const { fullName, email, location, dateOfBirth, profileImage } = req.body;
+  const { fullName, email, location, dateOfBirth } = req.body;
 
   const user = req.user;
 
@@ -241,7 +241,10 @@ const completeProfile = asyncHandler(async (req, res) => {
     user.profile.email = email;
     user.profile.location = location || user.profile.location;
     user.profile.dateOfBirth = dateOfBirth || user.profile.dateOfBirth;
-    user.profile.profileImage = profileImage || user.profile.profileImage;
+    // If a file was uploaded and processed, use that; otherwise keep existing value
+    if (req.processedFileName) {
+      user.profile.profileImage = `profiles/${req.processedFileName}`;
+    }
     user.profile.isProfileComplete = true;
 
     await user.save();

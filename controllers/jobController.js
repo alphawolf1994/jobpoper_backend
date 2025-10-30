@@ -12,8 +12,7 @@ const createJob = asyncHandler(async (req, res) => {
     location,
     urgency,
     scheduledDate,
-    scheduledTime,
-    attachments = []
+    scheduledTime
   } = req.body;
 
   // Validate required fields
@@ -36,12 +35,19 @@ const createJob = asyncHandler(async (req, res) => {
     });
   }
 
+  // Build attachments from uploaded files (if any)
+  const uploadedAttachments = (req.processedFileNames || []).map(name => `jobs/${name}`);
+
   // Validate attachments limit
-  if (attachments.length > 5) {
+  if (uploadedAttachments.length > 5) {
     return res.status(400).json({
       status: 'error',
       message: 'Cannot have more than 5 attachments'
     });
+  }
+  // If the client did send files but zero could be used, log a warning for ops/debug
+  if (req.files && req.files.length && uploadedAttachments.length === 0) {
+    console.warn('[WARN] createJob: attachments submitted but none processed. Check file types.');
   }
 
   try {
@@ -53,7 +59,7 @@ const createJob = asyncHandler(async (req, res) => {
       urgency,
       scheduledDate: scheduledDateObj,
       scheduledTime,
-      attachments,
+      attachments: uploadedAttachments,
       postedBy: req.user._id
     });
 

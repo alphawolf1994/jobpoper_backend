@@ -9,6 +9,7 @@ const {
   getMe
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
+const { uploadProfileImage } = require('../middleware/upload');
 
 // Public routes
 router.post('/send-verification', sendPhoneVerification);
@@ -19,6 +20,6 @@ router.post('/login', login);
 // Protected routes
 router.use(protect); // All routes below this middleware are protected
 router.get('/me', getMe);
-router.put('/complete-profile', completeProfile);
+router.put('/complete-profile', uploadProfileImage, completeProfile);
 
 module.exports = router;

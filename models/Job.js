@@ -48,15 +48,15 @@ const jobSchema = new mongoose.Schema({
     required: [true, 'Scheduled time is required'],
     trim: true
   },
-  attachments: [{
-    type: String,
+  attachments: {
+    type: [String],
     validate: {
       validator: function(attachments) {
         return attachments.length <= 5;
       },
       message: 'Cannot have more than 5 attachments'
     }
-  }],
+  },
   status: {
     type: String,
     enum: ['open', 'completed', 'cancelled'],
