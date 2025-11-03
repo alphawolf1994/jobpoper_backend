@@ -31,6 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/jobs', require('./routes/jobs'));
+app.use('/api/locations', require('./routes/locations'));
 app.use('/api/health', require('./routes/health'));
 
 // Basic route

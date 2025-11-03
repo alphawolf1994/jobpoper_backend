@@ -19,11 +19,33 @@ const jobSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Cost cannot be more than 100 characters']
   },
-  location: {
+  jobType: {
     type: String,
-    required: [true, 'Location is required'],
-    trim: true,
-    maxlength: [200, 'Location cannot be more than 200 characters']
+    required: [true, 'Job type is required'],
+    enum: {
+      values: ['Pickup', 'OnSite'],
+      message: 'Job type must be one of: Pickup, OnSite'
+    }
+  },
+  location: {
+    source: {
+      id: String,
+      name: String,
+      fullAddress: String,
+      addressDetails: String,
+      latitude: Number,
+      longitude: Number,
+      createdAt: Number
+    },
+    destination: {
+      id: String,
+      name: String,
+      fullAddress: String,
+      addressDetails: String,
+      latitude: Number,
+      longitude: Number,
+      createdAt: Number
+    }
   },
   urgency: {
     type: String,

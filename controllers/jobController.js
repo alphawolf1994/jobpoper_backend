@@ -10,13 +10,14 @@ const createJob = asyncHandler(async (req, res) => {
     description,
     cost,
     location,
+    jobType,
     urgency,
     scheduledDate,
     scheduledTime
   } = req.body;
 
   // Validate required fields
-  if (!title || !description || !cost || !location || !urgency || !scheduledDate || !scheduledTime) {
+  if (!title || !description || !cost || !location || !jobType || !urgency || !scheduledDate || !scheduledTime) {
     return res.status(400).json({
       status: 'error',
       message: 'All required fields must be provided'
