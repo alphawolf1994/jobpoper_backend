@@ -87,7 +87,10 @@ userSchema.methods.comparePin = async function(candidatePin) {
 };
 
 // Index for better performance
-userSchema.index({ phoneNumber: 1 });
+// `phoneNumber` is declared with `unique: true` in the schema above which
+// already creates an index; the explicit schema index was causing a duplicate
+// index warning. Keep the unique constraint on the field and only keep the
+// createdAt index here.
 userSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('User', userSchema);

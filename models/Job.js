@@ -27,24 +27,51 @@ const jobSchema = new mongoose.Schema({
       message: 'Job type must be one of: Pickup, OnSite'
     }
   },
-  location: {
-    source: {
-      id: String,
-      name: String,
-      fullAddress: String,
-      addressDetails: String,
-      latitude: Number,
-      longitude: Number,
-      createdAt: Number
-    },
-    destination: {
-      id: String,
-      name: String,
-      fullAddress: String,
-      addressDetails: String,
-      latitude: Number,
-      longitude: Number,
-      createdAt: Number
+   location: {
+    type: mongoose.Schema.Types.Mixed,
+    required: [true, 'Location is required'],
+    validate: {
+      validator: function(location) {
+        if (this.jobType === 'OnSite') {
+          // For OnSite, location should be a single location object
+          return (
+            location &&
+            typeof location === 'object' &&
+            location.id &&
+            location.name &&
+            location.fullAddress &&
+            typeof location.latitude === 'number' &&
+            typeof location.longitude === 'number'
+          );
+        } else if (this.jobType === 'Pickup') {
+          // For Pickup, location should have source and destination
+          return (
+            location &&
+            location.source &&
+            location.destination &&
+            location.source.id &&
+            location.source.name &&
+            location.source.fullAddress &&
+            typeof location.source.latitude === 'number' &&
+            typeof location.source.longitude === 'number' &&
+            location.destination.id &&
+            location.destination.name &&
+            location.destination.fullAddress &&
+            typeof location.destination.latitude === 'number' &&
+            typeof location.destination.longitude === 'number'
+          );
+        }
+        return false;
+      },
+      message: function(props) {
+        const jobType = this.jobType;
+        if (jobType === 'OnSite') {
+          return 'OnSite jobs require a single location object with id, name, fullAddress, latitude, and longitude';
+        } else if (jobType === 'Pickup') {
+          return 'Pickup jobs require both source and destination locations with id, name, fullAddress, latitude, and longitude';
+        }
+        return 'Invalid location format for job type';
+      }
     }
   },
   urgency: {
@@ -103,7 +130,8 @@ const jobSchema = new mongoose.Schema({
 
 // Indexes for better performance
 jobSchema.index({ postedBy: 1, createdAt: -1 });
-jobSchema.index({ location: 'text', title: 'text', description: 'text' });
+jobSchema.index({ 'location.fullAddress': 'text', title: 'text', description: 'text' });
+jobSchema.index({ 'location.source.fullAddress': 'text', 'location.destination.fullAddress': 'text', title: 'text', description: 'text' });
 jobSchema.index({ scheduledDate: 1, status: 1 });
 jobSchema.index({ urgency: 1, status: 1 });
 
@@ -120,8 +148,52 @@ jobSchema.virtual('formattedScheduledDate').get(function() {
 jobSchema.virtual('contactInfo').get(function() {
   return this.postedBy ? this.postedBy.phoneNumber : null;
 });
-
+// Virtual to get location based on job type
+jobSchema.virtual('jobLocation').get(function() {
+  if (this.jobType === 'OnSite') {
+    return {
+      type: 'single',
+      data: this.location
+    };
+  } else if (this.jobType === 'Pickup') {
+    return {
+      type: 'pickup',
+      source: this.location.source,
+      destination: this.location.destination
+    };
+  }
+  return null;
+});
+// Pre-save middleware to parse location string if needed
+jobSchema.pre('save', function(next) {
+  if (typeof this.location === 'string') {
+    try {
+      this.location = JSON.parse(this.location);
+    } catch (error) {
+      return next(new Error('Invalid location format'));
+    }
+  }
+  next();
+});
+// Method to get display address based on job type
+jobSchema.methods.getDisplayAddress = function() {
+  if (this.jobType === 'OnSite') {
+    return this.location.fullAddress;
+  } else if (this.jobType === 'Pickup') {
+    return `${this.location.source.fullAddress} → ${this.location.destination.fullAddress}`;
+  }
+  return 'No address available';
+};
 // Ensure virtual fields are serialized
-jobSchema.set('toJSON', { virtuals: true });
+// Ensure virtual fields are serialized
+jobSchema.set('toJSON', { 
+  virtuals: true,
+  transform: function(doc, ret) {
+    // Add displayAddress to JSON output
+    ret.displayAddress = doc.getDisplayAddress();
+    return ret;
+  }
+});
+
 
 module.exports = mongoose.model('Job', jobSchema);

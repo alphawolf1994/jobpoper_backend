@@ -16,8 +16,21 @@ const createJob = asyncHandler(async (req, res) => {
     scheduledTime
   } = req.body;
 
+  // If location was sent as a JSON string (common with multipart/form-data), parse it.
+  let locationObj = location;
+  if (typeof location === 'string') {
+    try {
+      locationObj = JSON.parse(location);
+    } catch (err) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid location format. Send location as an object or a JSON string.'
+      });
+    }
+  }
+
   // Validate required fields
-  if (!title || !description || !cost || !location || !jobType || !urgency || !scheduledDate || !scheduledTime) {
+  if (!title || !description || !cost || !locationObj || !jobType || !urgency || !scheduledDate || !scheduledTime) {
     return res.status(400).json({
       status: 'error',
       message: 'All required fields must be provided'
@@ -56,7 +69,8 @@ const createJob = asyncHandler(async (req, res) => {
       title,
       description,
       cost,
-      location,
+      location: locationObj,
+      jobType,
       urgency,
       scheduledDate: scheduledDateObj,
       scheduledTime,
@@ -106,15 +120,29 @@ const getAllJobs = asyncHandler(async (req, res) => {
   };
   
   if (urgency) filter.urgency = urgency;
+
+  // Location now stored as an object with source and destination.
+  // If `location` query param provided, match against source/destination address or name.
   if (location) {
-    filter.location = { $regex: location, $options: 'i' };
-  }
-  if (search) {
     filter.$or = [
+      { 'location.source.fullAddress': { $regex: location, $options: 'i' } },
+      { 'location.source.name': { $regex: location, $options: 'i' } },
+      { 'location.destination.fullAddress': { $regex: location, $options: 'i' } },
+      { 'location.destination.name': { $regex: location, $options: 'i' } }
+    ];
+  }
+
+  if (search) {
+    const searchOr = [
       { title: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },
-      { location: { $regex: search, $options: 'i' } }
+      { 'location.source.fullAddress': { $regex: search, $options: 'i' } },
+      { 'location.destination.fullAddress': { $regex: search, $options: 'i' } }
     ];
+
+    // Merge with existing $or (from location) if present
+    if (filter.$or) filter.$or = filter.$or.concat(searchOr);
+    else filter.$or = searchOr;
   }
 
   // Build sort object
