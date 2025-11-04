@@ -97,6 +97,14 @@ const jobSchema = new mongoose.Schema({
     required: [true, 'Scheduled time is required'],
     trim: true
   },
+  responsePreference: {
+    type: String,
+    required: [true, 'Response preference is required'],
+    enum: {
+      values: ['direct_contact', 'show_interest'],
+      message: 'Response preference must be one of: direct_contact, show_interest'
+    }
+  },
   attachments: {
     type: [String],
     validate: {
@@ -128,12 +136,23 @@ const jobSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Track users who showed interest in a job
+jobSchema.add({
+  interestedUsers: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      notedAt: { type: Date, default: Date.now }
+    }
+  ]
+});
+
 // Indexes for better performance
 jobSchema.index({ postedBy: 1, createdAt: -1 });
 jobSchema.index({ 'location.fullAddress': 'text', title: 'text', description: 'text' });
 jobSchema.index({ 'location.source.fullAddress': 'text', 'location.destination.fullAddress': 'text', title: 'text', description: 'text' });
 jobSchema.index({ scheduledDate: 1, status: 1 });
 jobSchema.index({ urgency: 1, status: 1 });
+jobSchema.index({ 'interestedUsers.user': 1 });
 
 // Virtual for formatted scheduled date
 jobSchema.virtual('formattedScheduledDate').get(function() {

@@ -1,6 +1,110 @@
 const asyncHandler = require('express-async-handler');
 const Job = require('../models/Job');
 
+// @desc    Show interest in a job
+// @route   POST /api/jobs/:id/interest
+// @access  Private
+const showInterestInJob = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const job = await Job.findById(id);
+
+    if (!job || !job.isActive || job.status !== 'open') {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Job not found or not open'
+      });
+    }
+
+    // Only allow interest when the poster requested show_interest
+    if (job.responsePreference !== 'show_interest') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'This job does not accept interest submissions'
+      });
+    }
+
+    const alreadyInterested = (job.interestedUsers || []).some(
+      (entry) => entry.user.toString() === req.user._id.toString()
+    );
+
+    if (alreadyInterested) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'Interest already recorded'
+      });
+    }
+
+    job.interestedUsers = job.interestedUsers || [];
+    job.interestedUsers.push({ user: req.user._id, notedAt: new Date() });
+    await job.save();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Interest recorded successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to record interest',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get jobs current user showed interest in
+// @route   GET /api/jobs/my-interests
+// @access  Private
+const getMyInterestedJobs = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const sortBy = req.query.sortBy || 'scheduledDate';
+  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+  const sort = {};
+  sort[sortBy] = sortOrder;
+
+  try {
+    const filter = {
+      isActive: true,
+      status: 'open',
+      scheduledDate: { $exists: true },
+      'interestedUsers.user': req.user._id
+    };
+
+    const jobs = await Job.find(filter)
+      .populate('postedBy', 'phoneNumber profile.fullName profile.email')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Job.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        jobs,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalJobs: total,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch interested jobs',
+      error: error.message
+    });
+  }
+});
+
 // @desc    Create a new job
 // @route   POST /api/jobs
 // @access  Private
@@ -13,7 +117,8 @@ const createJob = asyncHandler(async (req, res) => {
     jobType,
     urgency,
     scheduledDate,
-    scheduledTime
+    scheduledTime,
+    responsePreference
   } = req.body;
 
   // If location was sent as a JSON string (common with multipart/form-data), parse it.
@@ -30,10 +135,19 @@ const createJob = asyncHandler(async (req, res) => {
   }
 
   // Validate required fields
-  if (!title || !description || !cost || !locationObj || !jobType || !urgency || !scheduledDate || !scheduledTime) {
+  if (!title || !description || !cost || !locationObj || !jobType || !urgency || !scheduledDate || !scheduledTime || !responsePreference) {
     return res.status(400).json({
       status: 'error',
       message: 'All required fields must be provided'
+    });
+  }
+
+  // Validate responsePreference
+  const validResponsePreferences = ['direct_contact', 'show_interest'];
+  if (!validResponsePreferences.includes(responsePreference)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Invalid response preference. Must be one of: direct_contact, show_interest'
     });
   }
 
@@ -74,6 +188,7 @@ const createJob = asyncHandler(async (req, res) => {
       urgency,
       scheduledDate: scheduledDateObj,
       scheduledTime,
+      responsePreference,
       attachments: uploadedAttachments,
       postedBy: req.user._id
     });
@@ -403,7 +518,8 @@ const getJobById = asyncHandler(async (req, res) => {
 
   try {
     const job = await Job.findById(id)
-      .populate('postedBy', 'phoneNumber profile.fullName profile.email profile.location');
+      .populate('postedBy', 'phoneNumber profile.fullName profile.email profile.location profile.profileImage')
+      .populate('interestedUsers.user', 'profile.fullName profile.email phoneNumber profile.profileImage');
 
     if (!job || !job.isActive) {
       return res.status(404).json({
@@ -665,7 +781,9 @@ module.exports = {
   getNormalJobs,
   getJobById,
   getMyJobs,
+  getMyInterestedJobs,
   updateJob,
   deleteJob,
-  updateJobStatus
+  updateJobStatus,
+  showInterestInJob
 };

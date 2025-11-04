@@ -542,6 +542,81 @@
 					"response": []
 				},
 				{
+					"name": "Show Interest In Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/{{job_id}}/interest",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"{{job_id}}",
+								"interest"
+							]
+						},
+						"description": "Record interest in a job (requires authentication). Only allowed when job is open, active, and responsePreference is show_interest."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Interested Jobs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/my-interests?page=1&limit=10&sortBy=scheduledDate&sortOrder=asc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"my-interests"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "sortBy",
+									"value": "scheduledDate",
+									"description": "Sort by field (scheduledDate, createdAt)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "asc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Get jobs the current user showed interest in (requires authentication). Returns only open and active jobs with a scheduled date."
+					},
+					"response": []
+				},
+				{
 					"name": "Update Job",
 					"request": {
 						"method": "PUT",
