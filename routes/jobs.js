@@ -20,15 +20,15 @@ const {
 router.get('/', getAllJobs);
 router.get('/hot', getHotJobs);
 router.get('/normal', getNormalJobs);
-// Protect only this route inline so it can appear before :id and avoid conflicts
+// Protect only these routes inline so they can appear before :id and avoid conflicts
 router.get('/my-interests', protect, getMyInterestedJobs);
+router.get('/my-jobs', protect, getMyJobs);
 router.get('/:id', getJobById);
 
 // Protected routes (require authentication)
 router.use(protect);
 
 router.post('/', uploadJobImages, createJob);
-router.get('/my-jobs', getMyJobs);
 router.post('/:id/interest', showInterestInJob);
 router.put('/:id', updateJob);
 router.delete('/:id', deleteJob);

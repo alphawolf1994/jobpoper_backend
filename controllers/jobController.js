@@ -348,7 +348,8 @@ const getHotJobs = asyncHandler(async (req, res) => {
             phoneNumber: '$postedByUser.phoneNumber',
             profile: {
               fullName: '$postedByUser.profile.fullName',
-              email: '$postedByUser.profile.email'
+              email: '$postedByUser.profile.email',
+              profileImage: '$postedByUser.profile.profileImage'
             }
           }
         }
@@ -455,7 +456,8 @@ const getNormalJobs = asyncHandler(async (req, res) => {
             phoneNumber: '$postedByUser.phoneNumber',
             profile: {
               fullName: '$postedByUser.profile.fullName',
-              email: '$postedByUser.profile.email'
+              email: '$postedByUser.profile.email',
+               profileImage: '$postedByUser.profile.profileImage'
             }
           }
         }
@@ -555,8 +557,11 @@ const getMyJobs = asyncHandler(async (req, res) => {
 
   const { status } = req.query;
 
-  // Build filter object - show all jobs posted by user
-  const filter = { postedBy: req.user._id };
+  // Build filter object - show only active jobs posted by user
+  const filter = { 
+    postedBy: req.user._id,
+    isActive: true
+  };
   if (status) filter.status = status;
 
   // Build sort object

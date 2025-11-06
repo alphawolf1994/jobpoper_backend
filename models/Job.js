@@ -84,13 +84,7 @@ const jobSchema = new mongoose.Schema({
   },
   scheduledDate: {
     type: Date,
-    required: [true, 'Scheduled date is required'],
-    validate: {
-      validator: function(date) {
-        return date >= new Date().setHours(0, 0, 0, 0);
-      },
-      message: 'Scheduled date cannot be in the past'
-    }
+    required: [true, 'Scheduled date is required']
   },
   scheduledTime: {
     type: String,
