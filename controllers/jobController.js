@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Job = require('../models/Job');
 
 // @desc    Show interest in a job
@@ -317,14 +318,99 @@ const getHotJobs = asyncHandler(async (req, res) => {
   }
 
   try {
+    // First, update jobs that have passed their scheduled date/time to inactive
+    const now = new Date();
+    
+    // Helper function to parse time string (format: "HH:MM AM/PM" or "HH:MM")
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      
+      // Remove extra spaces and convert to uppercase for easier parsing
+      const cleaned = timeStr.trim().toUpperCase();
+      
+      // Check if it has AM/PM
+      const hasAMPM = cleaned.includes('AM') || cleaned.includes('PM');
+      
+      if (hasAMPM) {
+        const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+        if (match) {
+          let hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const period = match[3];
+          
+          if (period === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (period === 'AM' && hours === 12) {
+            hours = 0;
+          }
+          
+          return { hours, minutes };
+        }
+      } else {
+        // 24-hour format
+        const match = cleaned.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          return {
+            hours: parseInt(match[1], 10),
+            minutes: parseInt(match[2], 10)
+          };
+        }
+      }
+      
+      return null;
+    };
+
+    // Find jobs that might be expired (check date first, then time)
+    const expiredJobIds = [];
+    const jobsToCheck = await Job.find({
+      isActive: true,
+      status: 'open',
+      urgency: 'Urgent',
+      scheduledDate: { $exists: true, $lte: now },
+      scheduledTime: { $exists: true }
+    }).select('_id scheduledDate scheduledTime');
+
+    // Check each job's full datetime (date + time)
+    for (const job of jobsToCheck) {
+      if (!job.scheduledDate || !job.scheduledTime) continue;
+      
+      const timeParts = parseTime(job.scheduledTime);
+      if (!timeParts) continue;
+      
+      // Create full datetime by combining scheduledDate with scheduledTime
+      const scheduledDateTime = new Date(job.scheduledDate);
+      scheduledDateTime.setHours(timeParts.hours, timeParts.minutes, 0, 0);
+      
+      // If scheduled datetime is in the past, mark for update
+      if (scheduledDateTime < now) {
+        expiredJobIds.push(job._id);
+      }
+    }
+
+    // Bulk update expired jobs to inactive
+    if (expiredJobIds.length > 0) {
+      await Job.updateMany(
+        { _id: { $in: expiredJobIds } },
+        { $set: { isActive: false } }
+      );
+    }
+
     // Use aggregation to match jobs with users whose location matches the query
+    // Build initial match conditions
+    const initialMatch = {
+      isActive: true,
+      status: 'open',
+      urgency: 'Urgent'
+    };
+
+    // Exclude current user's jobs if user is authenticated
+    if (req.user && req.user._id) {
+      initialMatch.postedBy = { $ne: new mongoose.Types.ObjectId(req.user._id) };
+    }
+
     const pipeline = [
       {
-        $match: {
-          isActive: true,
-          status: 'open',
-          urgency: 'Urgent'
-        }
+        $match: initialMatch
       },
       {
         $lookup: {
@@ -604,7 +690,18 @@ const getMyJobs = asyncHandler(async (req, res) => {
 // @access  Private
 const updateJob = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const updateData = req.body;
+  const {
+    title,
+    description,
+    cost,
+    location,
+    jobType,
+    urgency,
+    scheduledDate,
+    scheduledTime,
+    responsePreference,
+    attachments
+  } = req.body;
 
   try {
     const job = await Job.findById(id);
@@ -632,9 +729,37 @@ const updateJob = asyncHandler(async (req, res) => {
       });
     }
 
-    // If updating scheduled date, validate it's not in the past
-    if (updateData.scheduledDate) {
-      const scheduledDateObj = new Date(updateData.scheduledDate);
+    // Build updateData object with only provided fields
+    const updateData = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (cost !== undefined) updateData.cost = cost;
+    if (jobType !== undefined) {
+      // Validate jobType
+      const validJobTypes = ['Pickup', 'OnSite'];
+      if (!validJobTypes.includes(jobType)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid job type. Must be one of: Pickup, OnSite'
+        });
+      }
+      updateData.jobType = jobType;
+    }
+    if (urgency !== undefined) {
+      // Validate urgency
+      const validUrgencies = ['Urgent', 'Normal'];
+      if (!validUrgencies.includes(urgency)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid urgency. Must be one of: Urgent, Normal'
+        });
+      }
+      updateData.urgency = urgency;
+    }
+    if (scheduledDate !== undefined) {
+      // Validate scheduled date is not in the past
+      const scheduledDateObj = new Date(scheduledDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -644,13 +769,76 @@ const updateJob = asyncHandler(async (req, res) => {
           message: 'Scheduled date cannot be in the past'
         });
       }
+      updateData.scheduledDate = scheduledDateObj;
+    }
+    if (scheduledTime !== undefined) {
+      updateData.scheduledTime = scheduledTime;
+    }
+    if (responsePreference !== undefined) {
+      // Validate responsePreference
+      const validResponsePreferences = ['direct_contact', 'show_interest'];
+      if (!validResponsePreferences.includes(responsePreference)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid response preference. Must be one of: direct_contact, show_interest'
+        });
+      }
+      updateData.responsePreference = responsePreference;
     }
 
-    // If updating attachments, validate limit
-    if (updateData.attachments && updateData.attachments.length > 5) {
+    // Handle location parsing (if location was sent as a JSON string)
+    if (location !== undefined) {
+      let locationObj = location;
+      if (typeof location === 'string') {
+        try {
+          locationObj = JSON.parse(location);
+        } catch (err) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Invalid location format. Send location as an object or a JSON string.'
+          });
+        }
+      }
+      updateData.location = locationObj;
+    }
+
+    // Handle attachments
+    // Priority: uploaded files > attachments array in body
+    if (req.processedFileNames && req.processedFileNames.length > 0) {
+      // If files are uploaded, use those as the new attachments
+      const uploadedAttachments = req.processedFileNames.map(name => `jobs/${name}`);
+      
+      // Validate attachments limit
+      if (uploadedAttachments.length > 5) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Cannot have more than 5 attachments'
+        });
+      }
+      updateData.attachments = uploadedAttachments;
+    } else if (attachments !== undefined) {
+      // No new files uploaded, but attachments array provided in body
+      if (Array.isArray(attachments)) {
+        if (attachments.length > 5) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Cannot have more than 5 attachments'
+          });
+        }
+        updateData.attachments = attachments;
+      } else {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Attachments must be an array'
+        });
+      }
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         status: 'error',
-        message: 'Cannot have more than 5 attachments'
+        message: 'No fields provided to update'
       });
     }
 
@@ -779,6 +967,104 @@ const updateJobStatus = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Deactivate jobs whose scheduled date/time is in the past
+// @route   POST /api/jobs/expire-old
+// @access  Private
+const expireOldJobs = asyncHandler(async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Helper function to parse time string (format: "HH:MM AM/PM" or "HH:MM")
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+
+      const cleaned = timeStr.trim().toUpperCase();
+      const hasAMPM = cleaned.includes('AM') || cleaned.includes('PM');
+
+      if (hasAMPM) {
+        const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+        if (match) {
+          let hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const period = match[3];
+
+          if (period === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (period === 'AM' && hours === 12) {
+            hours = 0;
+          }
+
+          return { hours, minutes };
+        }
+      } else {
+        const match = cleaned.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          return {
+            hours: parseInt(match[1], 10),
+            minutes: parseInt(match[2], 10)
+          };
+        }
+      }
+
+      return null;
+    };
+
+    // Find candidate jobs: active, open, with scheduled date/time not in the future (by date)
+    const jobsToCheck = await Job.find({
+      isActive: true,
+      status: 'open',
+      scheduledDate: { $exists: true, $lte: now },
+      scheduledTime: { $exists: true }
+    }).select('_id scheduledDate scheduledTime');
+
+    const expiredJobIds = [];
+
+    for (const job of jobsToCheck) {
+      if (!job.scheduledDate || !job.scheduledTime) continue;
+
+      const timeParts = parseTime(job.scheduledTime);
+      if (!timeParts) continue;
+
+      const scheduledDateTime = new Date(job.scheduledDate);
+      scheduledDateTime.setHours(timeParts.hours, timeParts.minutes, 0, 0);
+
+      if (scheduledDateTime < now) {
+        expiredJobIds.push(job._id);
+      }
+    }
+
+    let updatedCount = 0;
+    if (expiredJobIds.length > 0) {
+      const result = await Job.updateMany(
+        { _id: { $in: expiredJobIds } },
+        {
+          $set: {
+            isActive: false,
+            status: 'cancelled'
+          }
+        }
+      );
+      updatedCount = result.modifiedCount || result.nModified || 0;
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Expired jobs processed successfully',
+      data: {
+        checkedJobs: jobsToCheck.length,
+        expiredJobs: expiredJobIds.length,
+        updatedJobs: updatedCount
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to process expired jobs',
+      error: error.message
+    });
+  }
+});
+
 module.exports = {
   createJob,
   getAllJobs,
@@ -790,5 +1076,6 @@ module.exports = {
   updateJob,
   deleteJob,
   updateJobStatus,
-  showInterestInJob
+  showInterestInJob,
+  expireOldJobs
 };

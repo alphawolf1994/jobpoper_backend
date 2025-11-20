@@ -379,7 +379,7 @@
 								}
 							]
 						},
-						"description": "Get urgent jobs by location with pagination and sorting (public endpoint)"
+						"description": "Get urgent jobs by location with pagination and sorting (public endpoint). When authenticated, excludes current user's jobs. Automatically deactivates jobs with past scheduled date/time."
 					},
 					"response": []
 				},
@@ -456,23 +456,75 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"description": "JWT token from login/register response"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"Need House Cleaner\",\n  \"description\": \"Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.\",\n  \"cost\": \"$50/hour\",\n  \"location\": \"Downtown, NYC\",\n  \"urgency\": \"Urgent\",\n  \"scheduledDate\": \"2024-01-15\",\n  \"scheduledTime\": \"10:00 AM\",\n  \"attachments\": [\n    \"https://example.com/image1.jpg\",\n    \"https://example.com/image2.jpg\"\n  ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Need House Cleaner",
+									"type": "text",
+									"description": "Job title (required)"
+								},
+								{
+									"key": "description",
+									"value": "Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.",
+									"type": "text",
+									"description": "Job description (required)"
+								},
+								{
+									"key": "cost",
+									"value": "$50/hour",
+									"type": "text",
+									"description": "Cost/budget (required)"
+								},
+								{
+									"key": "location",
+									"value": "{\"source\":{\"id\":\"1\",\"name\":\"Home\",\"fullAddress\":\"123 Main St, New York, NY\",\"latitude\":40.7128,\"longitude\":-74.0060},\"destination\":{\"id\":\"2\",\"name\":\"Office\",\"fullAddress\":\"456 Park Ave, New York, NY\",\"latitude\":40.7589,\"longitude\":-73.9851}}",
+									"type": "text",
+									"description": "Location object as JSON string (required). For Pickup: {source: {...}, destination: {...}}. For OnSite: single location object."
+								},
+								{
+									"key": "jobType",
+									"value": "Pickup",
+									"type": "text",
+									"description": "Job type: Pickup or OnSite (required)"
+								},
+								{
+									"key": "urgency",
+									"value": "Urgent",
+									"type": "text",
+									"description": "Urgency level: Urgent or Normal (required)"
+								},
+								{
+									"key": "scheduledDate",
+									"value": "2024-01-15",
+									"type": "text",
+									"description": "Scheduled date in YYYY-MM-DD format (required, cannot be in past)"
+								},
+								{
+									"key": "scheduledTime",
+									"value": "10:00 AM",
+									"type": "text",
+									"description": "Scheduled time in HH:MM AM/PM or HH:MM format (required)"
+								},
+								{
+									"key": "responsePreference",
+									"value": "show_interest",
+									"type": "text",
+									"description": "Response preference: direct_contact or show_interest (required)"
+								},
+								{
+									"key": "attachments",
+									"type": "file",
+									"src": [],
+									"description": "Image attachments (optional, max 5 files)"
 								}
-							}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/jobs",
@@ -484,7 +536,7 @@
 								"jobs"
 							]
 						},
-						"description": "Create a new job (requires authentication)"
+						"description": "Create a new job (requires authentication). Supports multipart/form-data for file uploads. Location can be sent as JSON string or object. All fields except attachments are required."
 					},
 					"response": []
 				},
@@ -622,23 +674,75 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"description": "JWT token from login/register response"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"Updated House Cleaning Job\",\n  \"description\": \"Updated description for the house cleaning job.\",\n  \"cost\": \"$60/hour\",\n  \"urgency\": \"High Priority\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated House Cleaning Job",
+									"type": "text",
+									"description": "Job title (optional)"
+								},
+								{
+									"key": "description",
+									"value": "Updated description for the house cleaning job.",
+									"type": "text",
+									"description": "Job description (optional)"
+								},
+								{
+									"key": "cost",
+									"value": "$60/hour",
+									"type": "text",
+									"description": "Cost/budget (optional)"
+								},
+								{
+									"key": "location",
+									"value": "{\"source\":{\"id\":\"1\",\"name\":\"Home\",\"fullAddress\":\"123 Main St, New York, NY\",\"latitude\":40.7128,\"longitude\":-74.0060},\"destination\":{\"id\":\"2\",\"name\":\"Office\",\"fullAddress\":\"456 Park Ave, New York, NY\",\"latitude\":40.7589,\"longitude\":-73.9851}}",
+									"type": "text",
+									"description": "Location object as JSON string (optional). For Pickup: {source: {...}, destination: {...}}. For OnSite: single location object."
+								},
+								{
+									"key": "jobType",
+									"value": "Pickup",
+									"type": "text",
+									"description": "Job type: Pickup or OnSite (optional, validated)"
+								},
+								{
+									"key": "urgency",
+									"value": "Normal",
+									"type": "text",
+									"description": "Urgency level: Urgent or Normal (optional, validated)"
+								},
+								{
+									"key": "scheduledDate",
+									"value": "2024-01-20",
+									"type": "text",
+									"description": "Scheduled date in YYYY-MM-DD format (optional, cannot be in past)"
+								},
+								{
+									"key": "scheduledTime",
+									"value": "2:00 PM",
+									"type": "text",
+									"description": "Scheduled time in HH:MM AM/PM or HH:MM format (optional)"
+								},
+								{
+									"key": "responsePreference",
+									"value": "direct_contact",
+									"type": "text",
+									"description": "Response preference: direct_contact or show_interest (optional, validated)"
+								},
+								{
+									"key": "attachments",
+									"type": "file",
+									"src": [],
+									"description": "Image attachments (optional, max 5 files). If files are uploaded, they replace existing attachments. Can also send attachments array in body."
 								}
-							}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/jobs/{{job_id}}",
@@ -651,7 +755,7 @@
 								"{{job_id}}"
 							]
 						},
-						"description": "Update a job (requires authentication, only job owner can update)"
+						"description": "Update a job (requires authentication, only job owner can update). Supports multipart/form-data for file uploads. All fields are optional - only provided fields will be updated. Cannot update completed or cancelled jobs. Location can be sent as JSON string or object."
 					},
 					"response": []
 				},
@@ -718,6 +822,32 @@
 							]
 						},
 						"description": "Update job status (requires authentication, only job owner can update). Status options: open, completed, cancelled"
+					},
+					"response": []
+				},
+				{
+					"name": "Expire Old Jobs",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/expire-old",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"expire-old"
+							]
+						},
+						"description": "Scan all active open jobs and deactivate those whose scheduled date and time are in the past. Sets isActive to false and status to cancelled. Requires authentication; intended for periodic maintenance."
 					},
 					"response": []
 				}

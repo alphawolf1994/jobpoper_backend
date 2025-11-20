@@ -13,7 +13,8 @@ const {
   updateJob,
   deleteJob,
   updateJobStatus,
-  showInterestInJob
+  showInterestInJob,
+  expireOldJobs
 } = require('../controllers/jobController');
 
 // Public routes
@@ -30,7 +31,8 @@ router.use(protect);
 
 router.post('/', uploadJobImages, createJob);
 router.post('/:id/interest', showInterestInJob);
-router.put('/:id', updateJob);
+router.post('/expire-old', expireOldJobs);
+router.put('/:id', uploadJobImages, updateJob);
 router.delete('/:id', deleteJob);
 router.put('/:id/status', updateJobStatus);
 
