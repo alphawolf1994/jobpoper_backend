@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { protect, optionalProtect } = require('../middleware/auth');
 const { uploadJobImages } = require('../middleware/upload');
 const {
   createJob,
@@ -19,7 +19,7 @@ const {
 
 // Public routes
 router.get('/', getAllJobs);
-router.get('/hot', getHotJobs);
+router.get('/hot', optionalProtect, getHotJobs);
 router.get('/normal', getNormalJobs);
 // Protect only these routes inline so they can appear before :id and avoid conflicts
 router.get('/my-interests', protect, getMyInterestedJobs);

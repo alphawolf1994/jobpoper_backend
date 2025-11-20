@@ -69,6 +69,38 @@ const authorize = (...roles) => {
   };
 };
 
+const optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select('-pin');
+
+      if (user && user.isActive) {
+        req.user = user;
+      }
+    } catch (error) {
+      // Ignore token errors for optional auth
+    }
+
+    return next();
+  } catch (error) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'Server error in authentication'
+    });
+  }
+};
+
 // Generate JWT token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -78,6 +110,7 @@ const generateToken = (id) => {
 
 module.exports = {
   protect,
+  optionalProtect,
   authorize,
   generateToken
 };
