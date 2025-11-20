@@ -646,9 +646,9 @@ const getMyJobs = asyncHandler(async (req, res) => {
   // Build filter object - show only active jobs posted by user
   const filter = { 
     postedBy: req.user._id,
-    isActive: true
+    // isActive: true
   };
-  if (status) filter.status = status;
+  // if (status) filter.status = status;
 
   // Build sort object
   const sort = {};
