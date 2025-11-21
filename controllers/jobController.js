@@ -609,7 +609,7 @@ const getJobById = asyncHandler(async (req, res) => {
       .populate('postedBy', 'phoneNumber profile.fullName profile.email profile.location profile.profileImage')
       .populate('interestedUsers.user', 'profile.fullName profile.email phoneNumber profile.profileImage');
 
-    if (!job || !job.isActive) {
+    if (!job) {
       return res.status(404).json({
         status: 'error',
         message: 'Job not found'
