@@ -872,11 +872,10 @@ const updateJob = asyncHandler(async (req, res) => {
       });
     }
 
-    const updatedJob = await Job.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('postedBy', 'phoneNumber profile.fullName profile.email');
+    // Apply updates on the document so that custom validators and pre-save hooks run correctly
+    Object.assign(job, updateData);
+    const updatedJob = await job.save();
+    await updatedJob.populate('postedBy', 'phoneNumber profile.fullName profile.email');
 
     res.status(200).json({
       status: 'success',
