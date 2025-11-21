@@ -805,19 +805,31 @@ const updateJob = asyncHandler(async (req, res) => {
     }
 
     // Handle attachments: combine newAttachments (uploaded files) and existingAttachments
-    const { newAttachments, existingAttachments } = req.body;
-    const combinedAttachments = [];
 
-    // Add newly uploaded files (processed by upload middleware)
-    if (req.processedFileNames && req.processedFileNames.length > 0) {
-      const uploadedAttachments = req.processedFileNames.map(name => `jobs/${name}`);
-      combinedAttachments.push(...uploadedAttachments);
-    }
+      const { newAttachments, existingAttachments } = req.body;
+      const combinedAttachments = [];
 
-    // Add existing attachments (already saved paths)
-    if (existingAttachments && Array.isArray(existingAttachments)) {
-      combinedAttachments.push(...existingAttachments);
-    }
+      // Add newly uploaded files (processed by upload middleware)
+      if (req.processedFileNames && req.processedFileNames.length > 0) {
+        const uploadedAttachments = req.processedFileNames.map(name => `jobs/${name}`);
+        combinedAttachments.push(...uploadedAttachments);
+      }
+
+      // Add existing attachments (already saved paths)
+      let existingAttachmentsArr = existingAttachments;
+      if (typeof existingAttachments === 'string') {
+        try {
+          existingAttachmentsArr = JSON.parse(existingAttachments);
+        } catch (err) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Invalid existingAttachments format. Must be an array or JSON string.'
+          });
+        }
+      }
+      if (existingAttachmentsArr && Array.isArray(existingAttachmentsArr)) {
+        combinedAttachments.push(...existingAttachmentsArr);
+      }
 
     // If combined attachments provided, validate and save
     if (combinedAttachments.length > 0) {
