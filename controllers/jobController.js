@@ -700,7 +700,9 @@ const updateJob = asyncHandler(async (req, res) => {
     scheduledDate,
     scheduledTime,
     responsePreference,
-    attachments
+    attachments,
+    newAttachments,
+    existingAttachments
   } = req.body;
 
   try {
@@ -721,13 +723,13 @@ const updateJob = asyncHandler(async (req, res) => {
       });
     }
 
-    // Don't allow updating if job is completed or cancelled
-    if (job.status === 'completed' || job.status === 'cancelled') {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Cannot update completed or cancelled jobs'
-      });
-    }
+    // // Don't allow updating if job is completed or cancelled
+    // if (job.status === 'completed' || job.status === 'cancelled') {
+    //   return res.status(400).json({
+    //     status: 'error',
+    //     message: 'Cannot update completed or cancelled jobs'
+    //   });
+    // }
 
     // Build updateData object with only provided fields
     const updateData = {};
@@ -802,22 +804,33 @@ const updateJob = asyncHandler(async (req, res) => {
       updateData.location = locationObj;
     }
 
-    // Handle attachments
-    // Priority: uploaded files > attachments array in body
+    // Handle attachments: combine newAttachments (uploaded files) and existingAttachments
+    const { newAttachments, existingAttachments } = req.body;
+    const combinedAttachments = [];
+
+    // Add newly uploaded files (processed by upload middleware)
     if (req.processedFileNames && req.processedFileNames.length > 0) {
-      // If files are uploaded, use those as the new attachments
       const uploadedAttachments = req.processedFileNames.map(name => `jobs/${name}`);
-      
-      // Validate attachments limit
-      if (uploadedAttachments.length > 5) {
+      combinedAttachments.push(...uploadedAttachments);
+    }
+
+    // Add existing attachments (already saved paths)
+    if (existingAttachments && Array.isArray(existingAttachments)) {
+      combinedAttachments.push(...existingAttachments);
+    }
+
+    // If combined attachments provided, validate and save
+    if (combinedAttachments.length > 0) {
+      if (combinedAttachments.length > 5) {
         return res.status(400).json({
           status: 'error',
           message: 'Cannot have more than 5 attachments'
         });
       }
-      updateData.attachments = uploadedAttachments;
+      updateData.attachments = combinedAttachments;
     } else if (attachments !== undefined) {
-      // No new files uploaded, but attachments array provided in body
+      // Fallback: if neither newAttachments nor existingAttachments are present,
+      // but attachments field is provided, use it (for backwards compatibility)
       if (Array.isArray(attachments)) {
         if (attachments.length > 5) {
           return res.status(400).json({
@@ -834,8 +847,13 @@ const updateJob = asyncHandler(async (req, res) => {
       }
     }
 
-    // If no fields to update, return error
-    if (Object.keys(updateData).length === 0) {
+    // Always reset status to 'open' and isActive to true when job is updated
+    updateData.status = 'open';
+    updateData.isActive = true;
+
+    // If no fields to update (excluding status and isActive), return error
+    if (Object.keys(updateData).length === 2) {
+      // Only status and isActive are set
       return res.status(400).json({
         status: 'error',
         message: 'No fields provided to update'

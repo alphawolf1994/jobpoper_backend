@@ -466,27 +466,27 @@
 							"formdata": [
 								{
 									"key": "title",
-									"value": "Need House Cleaner",
+									"value": "Weekly Groceries Pickup",
 									"type": "text",
 									"description": "Job title (required)"
 								},
 								{
 									"key": "description",
-									"value": "Looking for a reliable house cleaner for a 3-bedroom apartment. Need deep cleaning including kitchen, bathrooms, and living areas. Must be available this weekend.",
+									"value": "Pick up groceries from supermarket and deliver to home. List will be provided via text message.",
 									"type": "text",
 									"description": "Job description (required)"
 								},
 								{
 									"key": "cost",
-									"value": "$50/hour",
+									"value": "$25/Drive",
 									"type": "text",
 									"description": "Cost/budget (required)"
 								},
 								{
 									"key": "location",
-									"value": "{\"source\":{\"id\":\"1\",\"name\":\"Home\",\"fullAddress\":\"123 Main St, New York, NY\",\"latitude\":40.7128,\"longitude\":-74.0060},\"destination\":{\"id\":\"2\",\"name\":\"Office\",\"fullAddress\":\"456 Park Ave, New York, NY\",\"latitude\":40.7589,\"longitude\":-73.9851}}",
+									"value": "{\"source\":{\"id\":\"Test\",\"name\":\"Test\",\"fullAddress\":\"868 Mission St, San Francisco, CA 94103, USA\",\"addressDetails\":\"Test\",\"latitude\":37.78322869091984,\"longitude\":-122.40603962033194,\"createdAt\":1763703644035},\"destination\":{\"id\":\"Home\",\"name\":\"Home\",\"fullAddress\":\"123 Main Street, New York, NY 10001\",\"addressDetails\":\"Floor 5, Apartment 12\",\"latitude\":40.7128,\"longitude\":-74.006,\"createdAt\":1763703644035}}",
 									"type": "text",
-									"description": "Location object as JSON string (required). For Pickup: {source: {...}, destination: {...}}. For OnSite: single location object."
+									"description": "Location object as JSON string (required). Must include source and destination with: id, name, fullAddress, addressDetails, latitude, longitude, createdAt"
 								},
 								{
 									"key": "jobType",
@@ -502,13 +502,13 @@
 								},
 								{
 									"key": "scheduledDate",
-									"value": "2024-01-15",
+									"value": "2025-11-04",
 									"type": "text",
 									"description": "Scheduled date in YYYY-MM-DD format (required, cannot be in past)"
 								},
 								{
 									"key": "scheduledTime",
-									"value": "10:00 AM",
+									"value": "01:46 PM",
 									"type": "text",
 									"description": "Scheduled time in HH:MM AM/PM or HH:MM format (required)"
 								},
@@ -522,7 +522,7 @@
 									"key": "attachments",
 									"type": "file",
 									"src": [],
-									"description": "Image attachments (optional, max 5 files)"
+									"description": "Image attachments (optional, max 5 files). Sent as multipart files."
 								}
 							]
 						},
@@ -536,7 +536,7 @@
 								"jobs"
 							]
 						},
-						"description": "Create a new job (requires authentication). Supports multipart/form-data for file uploads. Location can be sent as JSON string or object. All fields except attachments are required."
+						"description": "Create a new job (requires authentication). Supports multipart/form-data for file uploads. Location must be sent as JSON string with source and destination objects. All fields except attachments are required."
 					},
 					"response": []
 				},
@@ -684,27 +684,27 @@
 							"formdata": [
 								{
 									"key": "title",
-									"value": "Updated House Cleaning Job",
+									"value": "Updated Groceries Pickup",
 									"type": "text",
 									"description": "Job title (optional)"
 								},
 								{
 									"key": "description",
-									"value": "Updated description for the house cleaning job.",
+									"value": "Updated description - pick up groceries from new location.",
 									"type": "text",
 									"description": "Job description (optional)"
 								},
 								{
 									"key": "cost",
-									"value": "$60/hour",
+									"value": "$30/Drive",
 									"type": "text",
 									"description": "Cost/budget (optional)"
 								},
 								{
 									"key": "location",
-									"value": "{\"source\":{\"id\":\"1\",\"name\":\"Home\",\"fullAddress\":\"123 Main St, New York, NY\",\"latitude\":40.7128,\"longitude\":-74.0060},\"destination\":{\"id\":\"2\",\"name\":\"Office\",\"fullAddress\":\"456 Park Ave, New York, NY\",\"latitude\":40.7589,\"longitude\":-73.9851}}",
+									"value": "{\"source\":{\"id\":\"Test\",\"name\":\"Test\",\"fullAddress\":\"868 Mission St, San Francisco, CA 94103, USA\",\"addressDetails\":\"Test\",\"latitude\":37.78322869091984,\"longitude\":-122.40603962033194,\"createdAt\":1763703644035},\"destination\":{\"id\":\"Home\",\"name\":\"Home\",\"fullAddress\":\"123 Main Street, New York, NY 10001\",\"addressDetails\":\"Floor 5, Apartment 12\",\"latitude\":40.7128,\"longitude\":-74.006,\"createdAt\":1763703644035}}",
 									"type": "text",
-									"description": "Location object as JSON string (optional). For Pickup: {source: {...}, destination: {...}}. For OnSite: single location object."
+									"description": "Location object as JSON string (optional). Must include source and destination with full details."
 								},
 								{
 									"key": "jobType",
@@ -720,13 +720,13 @@
 								},
 								{
 									"key": "scheduledDate",
-									"value": "2024-01-20",
+									"value": "2025-11-05",
 									"type": "text",
 									"description": "Scheduled date in YYYY-MM-DD format (optional, cannot be in past)"
 								},
 								{
 									"key": "scheduledTime",
-									"value": "2:00 PM",
+									"value": "02:30 PM",
 									"type": "text",
 									"description": "Scheduled time in HH:MM AM/PM or HH:MM format (optional)"
 								},
@@ -737,10 +737,16 @@
 									"description": "Response preference: direct_contact or show_interest (optional, validated)"
 								},
 								{
+									"key": "existingAttachments",
+									"value": "[\"jobs/job-1762235167425-e69b202941aa9e2e.webp\", \"jobs/job-1762235167934-d46e93dfa0fad9fc.webp\"]",
+									"type": "text",
+									"description": "Array of existing attachment paths to keep (optional). JSON array as string."
+								},
+								{
 									"key": "attachments",
 									"type": "file",
 									"src": [],
-									"description": "Image attachments (optional, max 5 files). If files are uploaded, they replace existing attachments. Can also send attachments array in body."
+									"description": "New image attachments to upload (optional, max 5 total with existing). These are combined with existingAttachments."
 								}
 							]
 						},
@@ -755,7 +761,7 @@
 								"{{job_id}}"
 							]
 						},
-						"description": "Update a job (requires authentication, only job owner can update). Supports multipart/form-data for file uploads. All fields are optional - only provided fields will be updated. Cannot update completed or cancelled jobs. Location can be sent as JSON string or object."
+						"description": "Update a job (requires authentication, only job owner can update). Supports multipart/form-data for file uploads. All fields are optional - only provided fields will be updated. When updated: status is reset to 'open' and isActive is set to 'true'. Attachments: combine newAttachments (uploaded files via multipart) with existingAttachments (previously saved paths), max 5 total."
 					},
 					"response": []
 				},
