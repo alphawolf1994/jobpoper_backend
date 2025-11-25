@@ -323,7 +323,15 @@ const changePin = asyncHandler(async (req, res) => {
   }
 
   try {
-    const user = req.user;
+    // Fetch user with PIN field (protect middleware excludes it by default)
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
 
     // Verify old PIN
     const isPinValid = await user.comparePin(oldPin);
