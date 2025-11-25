@@ -273,6 +273,45 @@
 						"description": "Complete user profile with additional information (requires authentication)"
 					},
 					"response": []
+				},
+				{
+					"name": "Change PIN",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"description": "JWT token from login/register response"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"oldPin\": \"1234\",\n  \"newPin\": \"5678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/change-pin",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"change-pin"
+							]
+						},
+						"description": "Change user PIN (requires authentication). Old PIN must be correct, new PIN must be 4 digits and different from old PIN."
+					},
+					"response": []
 				}
 			],
 			"description": "Authentication endpoints"
@@ -427,6 +466,112 @@
 							]
 						},
 						"description": "Get normal jobs by location with pagination and sorting (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Hot Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/search/hot?location=New York&search=groceries&page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"search",
+								"hot"
+							],
+							"query": [
+								{
+									"key": "location",
+									"value": "New York",
+									"description": "Required: Location to filter urgent jobs"
+								},
+								{
+									"key": "search",
+									"value": "groceries",
+									"description": "Required: Search term to match against job titles"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Search urgent jobs by title with location filtering, pagination and sorting (public endpoint). When authenticated, excludes current user's jobs. Automatically deactivates jobs with past scheduled date/time."
+					},
+					"response": []
+				},
+				{
+					"name": "Search Normal Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/jobs/search/normal?location=New York&search=cleaning&page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"jobs",
+								"search",
+								"normal"
+							],
+							"query": [
+								{
+									"key": "location",
+									"value": "New York",
+									"description": "Required: Location to filter normal jobs"
+								},
+								{
+									"key": "search",
+									"value": "cleaning",
+									"description": "Required: Search term to match against job titles"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort by field (createdAt, title, urgency, scheduledDate)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "desc",
+									"description": "Sort order (asc, desc)"
+								}
+							]
+						},
+						"description": "Search normal jobs by title with location filtering, pagination and sorting (public endpoint). When authenticated, excludes current user's jobs."
 					},
 					"response": []
 				},

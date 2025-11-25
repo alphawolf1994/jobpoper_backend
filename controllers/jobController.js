@@ -156,7 +156,7 @@ const createJob = asyncHandler(async (req, res) => {
   const scheduledDateObj = new Date(scheduledDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   if (scheduledDateObj < today) {
     return res.status(400).json({
       status: 'error',
@@ -222,7 +222,7 @@ const getAllJobs = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const sortBy = req.query.sortBy || 'createdAt';
   const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-  
+
   const {
     urgency,
     location,
@@ -230,11 +230,11 @@ const getAllJobs = asyncHandler(async (req, res) => {
   } = req.query;
 
   // Build filter object - only show open jobs
-  const filter = { 
+  const filter = {
     isActive: true,
     status: 'open'  // Only show open jobs
   };
-  
+
   if (urgency) filter.urgency = urgency;
 
   // Location now stored as an object with source and destination.
@@ -306,7 +306,7 @@ const getHotJobs = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
   const sortBy = req.query.sortBy || 'createdAt';
   const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-  
+
   const { location } = req.query;
 
   // Validate required location parameter
@@ -320,30 +320,30 @@ const getHotJobs = asyncHandler(async (req, res) => {
   try {
     // First, update jobs that have passed their scheduled date/time to inactive
     const now = new Date();
-    
+
     // Helper function to parse time string (format: "HH:MM AM/PM" or "HH:MM")
     const parseTime = (timeStr) => {
       if (!timeStr) return null;
-      
+
       // Remove extra spaces and convert to uppercase for easier parsing
       const cleaned = timeStr.trim().toUpperCase();
-      
+
       // Check if it has AM/PM
       const hasAMPM = cleaned.includes('AM') || cleaned.includes('PM');
-      
+
       if (hasAMPM) {
         const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
         if (match) {
           let hours = parseInt(match[1], 10);
           const minutes = parseInt(match[2], 10);
           const period = match[3];
-          
+
           if (period === 'PM' && hours !== 12) {
             hours += 12;
           } else if (period === 'AM' && hours === 12) {
             hours = 0;
           }
-          
+
           return { hours, minutes };
         }
       } else {
@@ -356,7 +356,7 @@ const getHotJobs = asyncHandler(async (req, res) => {
           };
         }
       }
-      
+
       return null;
     };
 
@@ -373,14 +373,14 @@ const getHotJobs = asyncHandler(async (req, res) => {
     // Check each job's full datetime (date + time)
     for (const job of jobsToCheck) {
       if (!job.scheduledDate || !job.scheduledTime) continue;
-      
+
       const timeParts = parseTime(job.scheduledTime);
       if (!timeParts) continue;
-      
+
       // Create full datetime by combining scheduledDate with scheduledTime
       const scheduledDateTime = new Date(job.scheduledDate);
       scheduledDateTime.setHours(timeParts.hours, timeParts.minutes, 0, 0);
-      
+
       // If scheduled datetime is in the past, mark for update
       if (scheduledDateTime < now) {
         expiredJobIds.push(job._id);
@@ -490,19 +490,19 @@ const getHotJobs = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get normal jobs with location filtering and pagination
-// @route   GET /api/jobs/normal
+// @desc    Search hot jobs (urgent jobs) by title with location filtering and pagination
+// @route   GET /api/jobs/search/hot
 // @access  Public
-const getNormalJobs = asyncHandler(async (req, res) => {
+const searchHotJobs = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const sortBy = req.query.sortBy || 'createdAt';
   const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
-  
-  const { location } = req.query;
 
-  // Validate required location parameter
+  const { location, search } = req.query;
+
+  // Validate required parameters
   if (!location) {
     return res.status(400).json({
       status: 'error',
@@ -510,15 +510,107 @@ const getNormalJobs = asyncHandler(async (req, res) => {
     });
   }
 
+  if (!search) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Search parameter is required'
+    });
+  }
+
   try {
-    // Use aggregation to match jobs with users whose location matches the query
+    // First, update jobs that have passed their scheduled date/time to inactive
+    const now = new Date();
+
+    // Helper function to parse time string (format: "HH:MM AM/PM" or "HH:MM")
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+
+      // Remove extra spaces and convert to uppercase for easier parsing
+      const cleaned = timeStr.trim().toUpperCase();
+
+      // Check if it has AM/PM
+      const hasAMPM = cleaned.includes('AM') || cleaned.includes('PM');
+
+      if (hasAMPM) {
+        const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+        if (match) {
+          let hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const period = match[3];
+
+          if (period === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (period === 'AM' && hours === 12) {
+            hours = 0;
+          }
+
+          return { hours, minutes };
+        }
+      } else {
+        // 24-hour format
+        const match = cleaned.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          return {
+            hours: parseInt(match[1], 10),
+            minutes: parseInt(match[2], 10)
+          };
+        }
+      }
+
+      return null;
+    };
+
+    // Find jobs that might be expired (check date first, then time)
+    const expiredJobIds = [];
+    const jobsToCheck = await Job.find({
+      isActive: true,
+      status: 'open',
+      urgency: 'Urgent',
+      scheduledDate: { $exists: true, $lte: now },
+      scheduledTime: { $exists: true }
+    }).select('_id scheduledDate scheduledTime');
+
+    // Check each job's full datetime (date + time)
+    for (const job of jobsToCheck) {
+      if (!job.scheduledDate || !job.scheduledTime) continue;
+
+      const timeParts = parseTime(job.scheduledTime);
+      if (!timeParts) continue;
+
+      // Create full datetime by combining scheduledDate with scheduledTime
+      const scheduledDateTime = new Date(job.scheduledDate);
+      scheduledDateTime.setHours(timeParts.hours, timeParts.minutes, 0, 0);
+
+      // If scheduled datetime is in the past, mark for update
+      if (scheduledDateTime < now) {
+        expiredJobIds.push(job._id);
+      }
+    }
+
+    // Bulk update expired jobs to inactive
+    if (expiredJobIds.length > 0) {
+      await Job.updateMany(
+        { _id: { $in: expiredJobIds } },
+        { $set: { isActive: false } }
+      );
+    }
+
+    // Build initial match conditions
+    const initialMatch = {
+      isActive: true,
+      status: 'open',
+      urgency: 'Urgent',
+      title: { $regex: search, $options: 'i' } // Add title search
+    };
+
+    // Exclude current user's jobs if user is authenticated
+    if (req.user && req.user._id) {
+      initialMatch.postedBy = { $ne: new mongoose.Types.ObjectId(req.user._id) };
+    }
+
     const pipeline = [
       {
-        $match: {
-          isActive: true,
-          status: 'open',
-          urgency: 'Normal'
-        }
+        $match: initialMatch
       },
       {
         $lookup: {
@@ -543,7 +635,126 @@ const getNormalJobs = asyncHandler(async (req, res) => {
             profile: {
               fullName: '$postedByUser.profile.fullName',
               email: '$postedByUser.profile.email',
-               profileImage: '$postedByUser.profile.profileImage'
+              profileImage: '$postedByUser.profile.profileImage'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          postedByUser: 0
+        }
+      },
+      {
+        $sort: { [sortBy]: sortOrder }
+      },
+      {
+        $facet: {
+          jobs: [
+            { $skip: skip },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ];
+
+    const result = await Job.aggregate(pipeline);
+    const jobs = result[0].jobs;
+    const total = result[0].totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        jobs,
+        location,
+        search,
+        urgency: 'Urgent',
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalJobs: total,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to search hot jobs',
+      error: error.message
+    });
+  }
+});
+
+
+
+// @desc    Get normal jobs with location filtering and pagination
+// @route   GET /api/jobs/normal
+// @access  Public
+const getNormalJobs = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const sortBy = req.query.sortBy || 'createdAt';
+  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+  const { location } = req.query;
+
+  // Validate required location parameter
+  if (!location) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Location parameter is required'
+    });
+  }
+
+  try {
+    // Build initial match conditions
+    const initialMatch = {
+      isActive: true,
+      status: 'open',
+      urgency: 'Normal'
+    };
+
+    // Exclude current user's jobs if user is authenticated
+    if (req.user && req.user._id) {
+      initialMatch.postedBy = { $ne: new mongoose.Types.ObjectId(req.user._id) };
+    }
+
+    // Use aggregation to match jobs with users whose location matches the query
+    const pipeline = [
+      {
+        $match: initialMatch
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'postedBy',
+          foreignField: '_id',
+          as: 'postedByUser'
+        }
+      },
+      {
+        $unwind: '$postedByUser'
+      },
+      {
+        $match: {
+          'postedByUser.profile.location': { $regex: location, $options: 'i' }
+        }
+      },
+      {
+        $addFields: {
+          postedBy: {
+            phoneNumber: '$postedByUser.phoneNumber',
+            profile: {
+              fullName: '$postedByUser.profile.fullName',
+              email: '$postedByUser.profile.email',
+              profileImage: '$postedByUser.profile.profileImage'
             }
           }
         }
@@ -598,6 +809,132 @@ const getNormalJobs = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Search normal jobs by title with location filtering and pagination
+// @route   GET /api/jobs/search/normal
+// @access  Public
+const searchNormalJobs = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const sortBy = req.query.sortBy || 'createdAt';
+  const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+  const { location, search } = req.query;
+
+  // Validate required parameters
+  if (!location) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Location parameter is required'
+    });
+  }
+
+  if (!search) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Search parameter is required'
+    });
+  }
+
+  try {
+    // Build initial match conditions
+    const initialMatch = {
+      isActive: true,
+      status: 'open',
+      urgency: 'Normal',
+      title: { $regex: search, $options: 'i' } // Add title search
+    };
+
+    // Exclude current user's jobs if user is authenticated
+    if (req.user && req.user._id) {
+      initialMatch.postedBy = { $ne: new mongoose.Types.ObjectId(req.user._id) };
+    }
+
+    // Use aggregation to match jobs with users whose location matches the query
+    const pipeline = [
+      {
+        $match: initialMatch
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'postedBy',
+          foreignField: '_id',
+          as: 'postedByUser'
+        }
+      },
+      {
+        $unwind: '$postedByUser'
+      },
+      {
+        $match: {
+          'postedByUser.profile.location': { $regex: location, $options: 'i' }
+        }
+      },
+      {
+        $addFields: {
+          postedBy: {
+            phoneNumber: '$postedByUser.phoneNumber',
+            profile: {
+              fullName: '$postedByUser.profile.fullName',
+              email: '$postedByUser.profile.email',
+              profileImage: '$postedByUser.profile.profileImage'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          postedByUser: 0
+        }
+      },
+      {
+        $sort: { [sortBy]: sortOrder }
+      },
+      {
+        $facet: {
+          jobs: [
+            { $skip: skip },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ];
+
+    const result = await Job.aggregate(pipeline);
+    const jobs = result[0].jobs;
+    const total = result[0].totalCount[0]?.count || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        jobs,
+        location,
+        search,
+        urgency: 'Normal',
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalJobs: total,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to search normal jobs',
+      error: error.message
+    });
+  }
+});
+
+
 // @desc    Get a single job by ID
 // @route   GET /api/jobs/:id
 // @access  Public
@@ -644,7 +981,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
   const { status } = req.query;
 
   // Build filter object - show only active jobs posted by user
-  const filter = { 
+  const filter = {
     postedBy: req.user._id,
     // isActive: true
   };
@@ -764,7 +1101,7 @@ const updateJob = asyncHandler(async (req, res) => {
       const scheduledDateObj = new Date(scheduledDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (scheduledDateObj < today) {
         return res.status(400).json({
           status: 'error',
@@ -806,30 +1143,30 @@ const updateJob = asyncHandler(async (req, res) => {
 
     // Handle attachments: combine newAttachments (uploaded files) and existingAttachments
 
-      const { newAttachments, existingAttachments } = req.body;
-      const combinedAttachments = [];
+    const { newAttachments, existingAttachments } = req.body;
+    const combinedAttachments = [];
 
-      // Add newly uploaded files (processed by upload middleware)
-      if (req.processedFileNames && req.processedFileNames.length > 0) {
-        const uploadedAttachments = req.processedFileNames.map(name => `jobs/${name}`);
-        combinedAttachments.push(...uploadedAttachments);
-      }
+    // Add newly uploaded files (processed by upload middleware)
+    if (req.processedFileNames && req.processedFileNames.length > 0) {
+      const uploadedAttachments = req.processedFileNames.map(name => `jobs/${name}`);
+      combinedAttachments.push(...uploadedAttachments);
+    }
 
-      // Add existing attachments (already saved paths)
-      let existingAttachmentsArr = existingAttachments;
-      if (typeof existingAttachments === 'string') {
-        try {
-          existingAttachmentsArr = JSON.parse(existingAttachments);
-        } catch (err) {
-          return res.status(400).json({
-            status: 'error',
-            message: 'Invalid existingAttachments format. Must be an array or JSON string.'
-          });
-        }
+    // Add existing attachments (already saved paths)
+    let existingAttachmentsArr = existingAttachments;
+    if (typeof existingAttachments === 'string') {
+      try {
+        existingAttachmentsArr = JSON.parse(existingAttachments);
+      } catch (err) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid existingAttachments format. Must be an array or JSON string.'
+        });
       }
-      if (existingAttachmentsArr && Array.isArray(existingAttachmentsArr)) {
-        combinedAttachments.push(...existingAttachmentsArr);
-      }
+    }
+    if (existingAttachmentsArr && Array.isArray(existingAttachmentsArr)) {
+      combinedAttachments.push(...existingAttachmentsArr);
+    }
 
     // If combined attachments provided, validate and save
     if (combinedAttachments.length > 0) {
@@ -1098,7 +1435,9 @@ module.exports = {
   createJob,
   getAllJobs,
   getHotJobs,
+  searchHotJobs,
   getNormalJobs,
+  searchNormalJobs,
   getJobById,
   getMyJobs,
   getMyInterestedJobs,

@@ -6,7 +6,9 @@ const {
   createJob,
   getAllJobs,
   getHotJobs,
+  searchHotJobs,
   getNormalJobs,
+  searchNormalJobs,
   getJobById,
   getMyJobs,
   getMyInterestedJobs,
@@ -20,7 +22,9 @@ const {
 // Public routes
 router.get('/', getAllJobs);
 router.get('/hot', optionalProtect, getHotJobs);
-router.get('/normal', getNormalJobs);
+router.get('/search/hot', optionalProtect, searchHotJobs);
+router.get('/normal', optionalProtect, getNormalJobs);
+router.get('/search/normal', optionalProtect, searchNormalJobs);
 // Protect only these routes inline so they can appear before :id and avoid conflicts
 router.get('/my-interests', protect, getMyInterestedJobs);
 router.get('/my-jobs', protect, getMyJobs);

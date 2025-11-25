@@ -27,7 +27,7 @@ const sendPhoneVerification = asyncHandler(async (req, res) => {
 
   try {
     const result = await TwilioService.sendVerificationCode(phoneNumber);
-    
+
     res.status(200).json({
       status: 'success',
       message: 'Verification code sent successfully',
@@ -59,7 +59,7 @@ const verifyPhoneNumber = asyncHandler(async (req, res) => {
 
   try {
     const result = await TwilioService.verifyCode(phoneNumber, verificationCode);
-    
+
     res.status(200).json({
       status: 'success',
       message: 'Phone number verified successfully',
@@ -292,11 +292,72 @@ const getMe = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Change user PIN
+// @route   PUT /api/auth/change-pin
+// @access  Private
+const changePin = asyncHandler(async (req, res) => {
+  const { oldPin, newPin } = req.body;
+
+  // Validate required fields
+  if (!oldPin || !newPin) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Old PIN and new PIN are required'
+    });
+  }
+
+  // Validate new PIN format
+  if (!/^\d{4}$/.test(newPin)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'New PIN must be exactly 4 digits'
+    });
+  }
+
+  // Check if old PIN and new PIN are the same
+  if (oldPin === newPin) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'New PIN must be different from old PIN'
+    });
+  }
+
+  try {
+    const user = req.user;
+
+    // Verify old PIN
+    const isPinValid = await user.comparePin(oldPin);
+    if (!isPinValid) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Old PIN is incorrect'
+      });
+    }
+
+    // Update to new PIN
+    user.pin = newPin;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'PIN changed successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to change PIN',
+      error: error.message
+    });
+  }
+});
+
+
 module.exports = {
   sendPhoneVerification,
   verifyPhoneNumber,
   register,
   login,
   completeProfile,
-  getMe
+  getMe,
+  changePin
 };

@@ -6,7 +6,8 @@ const {
   register,
   login,
   completeProfile,
-  getMe
+  getMe,
+  changePin
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { uploadProfileImage } = require('../middleware/upload');
@@ -21,5 +22,6 @@ router.post('/login', login);
 router.use(protect); // All routes below this middleware are protected
 router.get('/me', getMe);
 router.put('/complete-profile', uploadProfileImage, completeProfile);
+router.put('/change-pin', changePin);
 
 module.exports = router;
