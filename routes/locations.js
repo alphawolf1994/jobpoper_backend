@@ -3,7 +3,8 @@ const router = express.Router();
 const {
   saveLocation,
   getMyLocations,
-  deleteLocation
+  deleteLocation,
+  updateLocation
 } = require('../controllers/locationController');
 const { protect } = require('../middleware/auth');
 
@@ -15,6 +16,9 @@ router.post('/', saveLocation);
 
 // Get all locations for the authenticated user
 router.get('/', getMyLocations);
+
+// Update a location by ID
+router.put('/:id', updateLocation);
 
 // Delete a location by ID
 router.delete('/:id', deleteLocation);

@@ -1375,9 +1375,8 @@ const expireOldJobs = asyncHandler(async (req, res) => {
       return null;
     };
 
-    // Find candidate jobs: active, open, with scheduled date/time not in the future (by date)
+    // Find candidate jobs: open (regardless of isActive), with scheduled date/time not in the future (by date)
     const jobsToCheck = await Job.find({
-      isActive: true,
       status: 'open',
       scheduledDate: { $exists: true, $lte: now },
       scheduledTime: { $exists: true }

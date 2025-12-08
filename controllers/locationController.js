@@ -172,9 +172,125 @@ const deleteLocation = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update a location
+// @route   PUT /api/locations/:id
+// @access  Private
+const updateLocation = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { name, fullAddress, latitude, longitude, addressDetails, createdAt } = req.body;
+
+  // Validate required fields (same as saveLocation)
+  if (!name || !fullAddress || latitude === undefined || longitude === undefined) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Name, full address, latitude, and longitude are required'
+    });
+  }
+
+  // Validate latitude and longitude are valid numbers
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Latitude and longitude must be valid numbers'
+    });
+  }
+
+  // Validate latitude and longitude ranges
+  if (latitude < -90 || latitude > 90) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Latitude must be between -90 and 90'
+    });
+  }
+
+  if (longitude < -180 || longitude > 180) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Longitude must be between -180 and 180'
+    });
+  }
+
+  try {
+    // Find location and verify ownership
+    const location = await Location.findById(id);
+
+    if (!location) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Location not found'
+      });
+    }
+
+    if (location.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Not authorized to update this location'
+      });
+    }
+
+    // Ensure new name is still unique for this user (excluding current location)
+    const existingWithSameName = await Location.findOne({
+      user: req.user._id,
+      name: name.trim(),
+      _id: { $ne: location._id }
+    });
+
+    if (existingWithSameName) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Location with name "${name}" already exists. Please choose a different name.`
+      });
+    }
+
+    // Apply updates
+    location.name = name.trim();
+    location.fullAddress = fullAddress.trim();
+    location.latitude = latitude;
+    location.longitude = longitude;
+    location.addressDetails = addressDetails ? addressDetails.trim() : '';
+
+    if (createdAt !== undefined) {
+      location.createdAt = createdAt;
+    }
+
+    const updated = await location.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Location updated successfully',
+      data: {
+        location: {
+          id: updated._id,
+          name: updated.name,
+          fullAddress: updated.fullAddress,
+          latitude: updated.latitude,
+          longitude: updated.longitude,
+          addressDetails: updated.addressDetails,
+          createdAt: updated.createdAt
+        }
+      }
+    });
+  } catch (error) {
+    // Handle unique constraint violation specifically
+    if (error.code === 11000) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Location with name "${name}" already exists. Please choose a different name.`
+      });
+    }
+
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update location',
+      error: error.message
+    });
+  }
+});
+
 module.exports = {
   saveLocation,
   getMyLocations,
-  deleteLocation
+  deleteLocation,
+  updateLocation
 };
 

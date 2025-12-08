@@ -292,17 +292,17 @@ const getMe = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Change user PIN
+// @desc    Change user PIN (only requires new PIN)
 // @route   PUT /api/auth/change-pin
 // @access  Private
 const changePin = asyncHandler(async (req, res) => {
-  const { oldPin, newPin } = req.body;
+  const { newPin } = req.body;
 
-  // Validate required fields
-  if (!oldPin || !newPin) {
+  // Validate required field
+  if (!newPin) {
     return res.status(400).json({
       status: 'error',
-      message: 'Old PIN and new PIN are required'
+      message: 'New PIN is required'
     });
   }
 
@@ -314,16 +314,8 @@ const changePin = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if old PIN and new PIN are the same
-  if (oldPin === newPin) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'New PIN must be different from old PIN'
-    });
-  }
-
   try {
-    // Fetch user with PIN field (protect middleware excludes it by default)
+    // Fetch user (ensure we have access to PIN for comparison)
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -333,12 +325,12 @@ const changePin = asyncHandler(async (req, res) => {
       });
     }
 
-    // Verify old PIN
-    const isPinValid = await user.comparePin(oldPin);
-    if (!isPinValid) {
-      return res.status(401).json({
+    // Prevent setting the same PIN again
+    const isSamePin = await user.comparePin(newPin);
+    if (isSamePin) {
+      return res.status(400).json({
         status: 'error',
-        message: 'Old PIN is incorrect'
+        message: 'New PIN must be different from the current PIN'
       });
     }
 

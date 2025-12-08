@@ -180,7 +180,111 @@ curl http://localhost:3001/api/locations \
 
 ---
 
-### 3. Delete a Location
+### 3. Update a Location
+**PUT** `/api/locations/:id`
+
+Update all details of an existing location. Only the owner can update their location.
+
+**Request Body:**
+```json
+{
+  "name": "Updated Home",
+  "fullAddress": "987 New Street, New York, NY 10001",
+  "latitude": 40.7130,
+  "longitude": -74.0070,
+  "addressDetails": "Floor 6, Apartment 14",
+  "createdAt": 1704115200000
+}
+```
+
+**Required Fields (same as Save Location):**
+- `name`: Location name
+- `fullAddress`: Complete address string
+- `latitude`: Latitude coordinate (-90 to 90)
+- `longitude`: Longitude coordinate (-180 to 180)
+
+**Optional Fields:**
+- `addressDetails`: Additional address details
+- `createdAt`: Timestamp (if not provided, existing value is kept)
+
+**Example Request:**
+```bash
+curl -X PUT http://localhost:3001/api/locations/64f8a1b2c3d4e5f6a7b8c9d1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "Updated Home",
+    "fullAddress": "987 New Street, New York, NY 10001",
+    "latitude": 40.7130,
+    "longitude": -74.0070,
+    "addressDetails": "Floor 6, Apartment 14"
+  }'
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "success",
+  "message": "Location updated successfully",
+  "data": {
+    "location": {
+      "id": "64f8a1b2c3d4e5f6a7b8c9d1",
+      "name": "Updated Home",
+      "fullAddress": "987 New Street, New York, NY 10001",
+      "latitude": 40.713,
+      "longitude": -74.007,
+      "addressDetails": "Floor 6, Apartment 14",
+      "createdAt": 1704115200000
+    }
+  }
+}
+```
+
+**Error Responses:**
+
+**400 Bad Request - Missing Required Fields:**
+```json
+{
+  "status": "error",
+  "message": "Name, full address, latitude, and longitude are required"
+}
+```
+
+**400 Bad Request - Invalid Coordinates:**
+```json
+{
+  "status": "error",
+  "message": "Latitude must be between -90 and 90"
+}
+```
+
+**400 Bad Request - Duplicate Location Name:**
+```json
+{
+  "status": "error",
+  "message": "Location with name \"Home\" already exists. Please choose a different name."
+}
+```
+
+**404 Not Found:**
+```json
+{
+  "status": "error",
+  "message": "Location not found"
+}
+```
+
+**403 Forbidden:**
+```json
+{
+  "status": "error",
+  "message": "Not authorized to update this location"
+}
+```
+
+---
+
+### 4. Delete a Location
 **DELETE** `/api/locations/:id`
 
 Delete a specific location by ID. Only the owner can delete their location.
@@ -359,7 +463,21 @@ curl http://localhost:3001/api/locations \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### 3. Delete a location
+### 3. Update a location
+```bash
+curl -X PUT http://localhost:3001/api/locations/LOCATION_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "name": "Updated Home",
+    "fullAddress": "987 New Street, New York, NY 10001",
+    "latitude": 40.7130,
+    "longitude": -74.0070,
+    "addressDetails": "Floor 6, Apartment 14"
+  }'
+```
+
+### 4. Delete a location
 ```bash
 curl -X DELETE http://localhost:3001/api/locations/LOCATION_ID \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
