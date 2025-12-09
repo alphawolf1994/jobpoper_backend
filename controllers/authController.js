@@ -44,6 +44,47 @@ const sendPhoneVerification = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Resend phone verification code
+// @route   POST /api/auth/resend-verification
+// @access  Public
+const resendPhoneVerification = asyncHandler(async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Phone number is required'
+    });
+  }
+
+  // Optional: keep same behavior as sendPhoneVerification and prevent resend for already registered numbers
+  const existingUser = await User.findOne({ phoneNumber });
+  if (existingUser) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Phone number already registered'
+    });
+  }
+
+  try {
+    const result = await TwilioService.sendVerificationCode(phoneNumber);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification code resent successfully',
+      data: {
+        phoneNumber,
+        twilioSid: result.twilioSid
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+});
+
 // @desc    Verify phone number
 // @route   POST /api/auth/verify-phone
 // @access  Public
@@ -389,6 +430,7 @@ const changePin = asyncHandler(async (req, res) => {
 
 module.exports = {
   sendPhoneVerification,
+  resendPhoneVerification,
   verifyPhoneNumber,
   register,
   login,
