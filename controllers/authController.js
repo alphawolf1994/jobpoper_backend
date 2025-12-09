@@ -211,6 +211,41 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Check if phone number exists
+// @route   POST /api/auth/check-phone
+// @access  Public
+const checkPhoneExists = asyncHandler(async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Phone number is required'
+    });
+  }
+
+  try {
+    const user = await User.findOne({ phoneNumber }).select('_id isActive');
+
+    const exists = !!user;
+    const isActive = user ? user.isActive : false;
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        exists,
+        isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to check phone number',
+      error: error.message
+    });
+  }
+});
+
 // @desc    Complete user profile
 // @route   PUT /api/auth/complete-profile
 // @access  Private
@@ -357,6 +392,7 @@ module.exports = {
   verifyPhoneNumber,
   register,
   login,
+  checkPhoneExists,
   completeProfile,
   getMe,
   changePin

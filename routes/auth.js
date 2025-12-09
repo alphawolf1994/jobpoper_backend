@@ -5,6 +5,7 @@ const {
   verifyPhoneNumber,
   register,
   login,
+  checkPhoneExists,
   completeProfile,
   getMe,
   changePin
@@ -17,6 +18,7 @@ router.post('/send-verification', sendPhoneVerification);
 router.post('/verify-phone', verifyPhoneNumber);
 router.post('/register', register);
 router.post('/login', login);
+router.post('/check-phone', checkPhoneExists);
 
 // Protected routes
 router.use(protect); // All routes below this middleware are protected
