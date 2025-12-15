@@ -1,6 +1,81 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const Job = require('../models/Job');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
+
+// Helper function to extract location strings from job location
+const extractLocationStrings = (jobLocation, jobType) => {
+  const locations = [];
+  
+  if (jobType === 'OnSite' && jobLocation) {
+    if (jobLocation.name) locations.push(jobLocation.name);
+    if (jobLocation.fullAddress) locations.push(jobLocation.fullAddress);
+  } else if (jobType === 'Pickup' && jobLocation) {
+    if (jobLocation.source) {
+      if (jobLocation.source.name) locations.push(jobLocation.source.name);
+      if (jobLocation.source.fullAddress) locations.push(jobLocation.source.fullAddress);
+    }
+    if (jobLocation.destination) {
+      if (jobLocation.destination.name) locations.push(jobLocation.destination.name);
+      if (jobLocation.destination.fullAddress) locations.push(jobLocation.destination.fullAddress);
+    }
+  }
+  
+  return locations;
+};
+
+// Helper function to create notifications for users in same location
+const createJobCreatedNotifications = async (job, jobCreatorId) => {
+  try {
+    const locationStrings = extractLocationStrings(job.location, job.jobType);
+    
+    if (locationStrings.length === 0) {
+      return; // No location data to match
+    }
+
+    // Build query to find users with matching location
+    // Match if user's profile.location contains any of the location strings
+    const locationQuery = {
+      $or: locationStrings.map(loc => ({
+        'profile.location': { $regex: loc, $options: 'i' }
+      }))
+    };
+
+    // Find users with matching location, excluding the job creator
+    const matchingUsers = await User.find({
+      ...locationQuery,
+      _id: { $ne: jobCreatorId },
+      isActive: true,
+      'profile.isProfileComplete': true
+    }).select('_id');
+
+    if (matchingUsers.length === 0) {
+      return; // No users to notify
+    }
+
+    // Get job creator info for notification message
+    const jobCreator = await User.findById(jobCreatorId).select('profile.fullName');
+    const creatorName = jobCreator?.profile?.fullName || 'Someone';
+
+    // Create notifications for all matching users
+    const notifications = matchingUsers.map(user => ({
+      recipient: user._id,
+      type: 'job_created',
+      title: 'New Job Available',
+      message: `${creatorName} posted a new job: ${job.title}`,
+      relatedEntityType: 'Job',
+      relatedEntityId: job._id,
+      navigationIdentifier: `job:${job._id}`,
+      isRead: false
+    }));
+
+    await Notification.insertMany(notifications);
+  } catch (error) {
+    // Log error but don't fail the job creation
+    console.error('Error creating job notifications:', error);
+  }
+};
 
 // @desc    Show interest in a job
 // @route   POST /api/jobs/:id/interest
@@ -40,6 +115,30 @@ const showInterestInJob = asyncHandler(async (req, res) => {
     job.interestedUsers = job.interestedUsers || [];
     job.interestedUsers.push({ user: req.user._id, notedAt: new Date() });
     await job.save();
+
+    // Create notification for job owner
+    try {
+      // Get interested user info
+      const interestedUser = await User.findById(req.user._id).select('profile.fullName');
+      const interestedUserName = interestedUser?.profile?.fullName || 'Someone';
+
+      // Create notification for job owner about this interest
+      // Note: We don't check for duplicates here because the function already prevents
+      // duplicate interests, so this will only be called for new interests
+      await Notification.create({
+        recipient: job.postedBy,
+        type: 'job_interest',
+        title: 'New Interest in Your Job',
+        message: `${interestedUserName} showed interest in your job: ${job.title}`,
+        relatedEntityType: 'Job',
+        relatedEntityId: job._id,
+        navigationIdentifier: `job:${job._id}`,
+        isRead: false
+      });
+    } catch (error) {
+      // Log error but don't fail the interest recording
+      console.error('Error creating interest notification:', error);
+    }
 
     res.status(201).json({
       status: 'success',
@@ -196,6 +295,11 @@ const createJob = asyncHandler(async (req, res) => {
 
     // Populate the postedBy field
     await job.populate('postedBy', 'phoneNumber profile.fullName profile.email');
+
+    // Create notifications for users in the same location (async, don't wait)
+    createJobCreatedNotifications(job, req.user._id).catch(err => {
+      console.error('Error creating notifications for new job:', err);
+    });
 
     res.status(201).json({
       status: 'success',
