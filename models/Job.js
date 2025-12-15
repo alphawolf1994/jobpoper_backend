@@ -150,6 +150,11 @@ jobSchema.index({ 'interestedUsers.user': 1 });
 
 // Virtual for formatted scheduled date
 jobSchema.virtual('formattedScheduledDate').get(function() {
+  // Guard against missing or invalid scheduledDate to avoid runtime errors
+  if (!this.scheduledDate || Object.prototype.toString.call(this.scheduledDate) !== '[object Date]') {
+    return null;
+  }
+
   return this.scheduledDate.toLocaleDateString('en-US', {
     year: 'numeric',
     month: '2-digit',
