@@ -10,47 +10,118 @@ const extractLocationStrings = (jobLocation, jobType) => {
   
   if (jobType === 'OnSite' && jobLocation) {
     if (jobLocation.name) locations.push(jobLocation.name);
-    if (jobLocation.fullAddress) locations.push(jobLocation.fullAddress);
+    if (jobLocation.fullAddress) {
+      locations.push(jobLocation.fullAddress);
+      // Extract city/state from fullAddress for better matching
+      // e.g., "123 Main St, New York, NY 10001" -> extract "New York, NY"
+      const addressParts = jobLocation.fullAddress.split(',');
+      if (addressParts.length >= 2) {
+        // Get city and state (usually last two parts before zip)
+        const cityState = addressParts.slice(-2).join(',').trim();
+        if (cityState) locations.push(cityState);
+        // Also try just the city
+        const city = addressParts[addressParts.length - 2]?.trim();
+        if (city) locations.push(city);
+      }
+    }
   } else if (jobType === 'Pickup' && jobLocation) {
     if (jobLocation.source) {
       if (jobLocation.source.name) locations.push(jobLocation.source.name);
-      if (jobLocation.source.fullAddress) locations.push(jobLocation.source.fullAddress);
+      if (jobLocation.source.fullAddress) {
+        locations.push(jobLocation.source.fullAddress);
+        // Extract city/state from source address
+        const addressParts = jobLocation.source.fullAddress.split(',');
+        if (addressParts.length >= 2) {
+          const cityState = addressParts.slice(-2).join(',').trim();
+          if (cityState) locations.push(cityState);
+          const city = addressParts[addressParts.length - 2]?.trim();
+          if (city) locations.push(city);
+        }
+      }
     }
     if (jobLocation.destination) {
       if (jobLocation.destination.name) locations.push(jobLocation.destination.name);
-      if (jobLocation.destination.fullAddress) locations.push(jobLocation.destination.fullAddress);
+      if (jobLocation.destination.fullAddress) {
+        locations.push(jobLocation.destination.fullAddress);
+        // Extract city/state from destination address
+        const addressParts = jobLocation.destination.fullAddress.split(',');
+        if (addressParts.length >= 2) {
+          const cityState = addressParts.slice(-2).join(',').trim();
+          if (cityState) locations.push(cityState);
+          const city = addressParts[addressParts.length - 2]?.trim();
+          if (city) locations.push(city);
+        }
+      }
     }
   }
   
-  return locations;
+  // Remove duplicates and empty strings
+  return [...new Set(locations.filter(loc => loc && loc.trim().length > 0))];
 };
 
 // Helper function to create notifications for users in same location
 const createJobCreatedNotifications = async (job, jobCreatorId) => {
   try {
+    console.log('[NOTIFICATION] Starting notification creation for job:', job._id);
+    console.log('[NOTIFICATION] Job location:', JSON.stringify(job.location, null, 2));
+    console.log('[NOTIFICATION] Job type:', job.jobType);
+    
     const locationStrings = extractLocationStrings(job.location, job.jobType);
+    console.log('[NOTIFICATION] Extracted location strings:', locationStrings);
     
     if (locationStrings.length === 0) {
+      console.log('[NOTIFICATION] No location strings extracted, skipping notifications');
       return; // No location data to match
     }
 
     // Build query to find users with matching location
-    // Match if user's profile.location contains any of the location strings
-    const locationQuery = {
-      $or: locationStrings.map(loc => ({
+    // Match if user's profile.location contains any of the location strings OR
+    // if any location string contains the user's profile.location
+    const locationQueries = [];
+    
+    // Match user location containing job location strings
+    locationStrings.forEach(loc => {
+      locationQueries.push({
         'profile.location': { $regex: loc, $options: 'i' }
-      }))
-    };
+      });
+    });
+    
+    // Also match if job location strings contain user location (bidirectional)
+    // We'll do this by getting all users first and filtering in memory
+    // OR we can use $expr for more complex matching
+    
+    console.log('[NOTIFICATION] Location query count:', locationQueries.length);
 
     // Find users with matching location, excluding the job creator
-    const matchingUsers = await User.find({
-      ...locationQuery,
+    // First, get all active users with complete profiles
+    let matchingUsers = await User.find({
       _id: { $ne: jobCreatorId },
       isActive: true,
-      'profile.isProfileComplete': true
-    }).select('_id');
+      'profile.isProfileComplete': true,
+      'profile.location': { $exists: true, $ne: null, $ne: '' }
+    }).select('_id profile.location');
+    
+    console.log('[NOTIFICATION] Total active users with locations:', matchingUsers.length);
+    
+    // Filter users where location matches (bidirectional matching)
+    matchingUsers = matchingUsers.filter(user => {
+      const userLocation = user.profile?.location?.toLowerCase() || '';
+      if (!userLocation) return false;
+      
+      // Check if any job location string is in user location OR user location is in any job location string
+      return locationStrings.some(jobLoc => {
+        const jobLocLower = jobLoc.toLowerCase();
+        return userLocation.includes(jobLocLower) || jobLocLower.includes(userLocation);
+      });
+    });
+
+    console.log('[NOTIFICATION] Found matching users:', matchingUsers.length);
+    if (matchingUsers.length > 0) {
+      console.log('[NOTIFICATION] Matching user locations:', matchingUsers.map(u => u.profile?.location));
+    }
 
     if (matchingUsers.length === 0) {
+      console.log('[NOTIFICATION] No matching users found, skipping notifications');
       return; // No users to notify
     }
 
@@ -70,10 +141,13 @@ const createJobCreatedNotifications = async (job, jobCreatorId) => {
       isRead: false
     }));
 
-    await Notification.insertMany(notifications);
+    console.log('[NOTIFICATION] Creating', notifications.length, 'notifications');
+    const result = await Notification.insertMany(notifications);
+    console.log('[NOTIFICATION] Successfully created', result.length, 'notifications');
   } catch (error) {
     // Log error but don't fail the job creation
-    console.error('Error creating job notifications:', error);
+    console.error('[NOTIFICATION] Error creating job notifications:', error);
+    console.error('[NOTIFICATION] Error stack:', error.stack);
   }
 };
 
