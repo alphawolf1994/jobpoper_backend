@@ -49,7 +49,8 @@ class TwilioService {
         .verifications
         .create({
           to: phoneNumber,
-          channel: 'sms'
+          channel: 'sms',
+          customMessage: 'Your JobPoper verification code is: {{code}}'
         });
 
       // Save verification record to database (without code since Twilio handles it)
