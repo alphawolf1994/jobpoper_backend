@@ -1,14 +1,25 @@
 const twilio = require('twilio');
 const PhoneVerification = require('../models/PhoneVerification');
 
-// Initialize Twilio client only if credentials are provided
+// Lazy initialization of Twilio client
 let client = null;
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && 
-    process.env.TWILIO_ACCOUNT_SID.startsWith('AC')) {
-  client = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-  );
+let clientInitialized = false;
+
+function getTwilioClient() {
+  if (!clientInitialized) {
+    clientInitialized = true;
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && 
+        process.env.TWILIO_ACCOUNT_SID.startsWith('AC')) {
+      client = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+      );
+      console.log('✅ Twilio client initialized successfully');
+    } else {
+      console.log('⚠️  Twilio client NOT initialized - missing credentials or invalid SID');
+    }
+  }
+  return client;
 }
 
 class TwilioService {
@@ -20,6 +31,7 @@ class TwilioService {
   // Send SMS verification code using Twilio Verify
   static async sendVerificationCode(phoneNumber) {
     try {
+      const client = getTwilioClient();
       // Check if Twilio is configured and not a trial account
       if (!client || !process.env.TWILIO_SERVICE_ID || process.env.TWILIO_SERVICE_ID === 'your-verify-service-id') {
         // For development/testing without Twilio - use hardcoded test code
@@ -68,7 +80,14 @@ class TwilioService {
         twilioSid: verification.sid
       };
     } catch (error) {
-      console.error('Twilio Verify Error:', error);
+      // Log detailed error information for debugging
+      console.error('❌ Twilio Verify Error Details:');
+      console.error('  Error Code:', error.code);
+      console.error('  Error Message:', error.message);
+      console.error('  More Info:', error.moreInfo);
+      console.error('  Status:', error.status);
+      console.error('  Phone Number:', phoneNumber);
+      console.error('  Full Error:', error);
       
       // Known scenarios to fallback to manual/dev mode:
       // 21608: Trial account - unverified recipient
@@ -101,7 +120,10 @@ class TwilioService {
         };
       }
 
-      throw new Error('Failed to send verification code');
+      // Throw a more detailed error message
+      const errorMessage = error.message || 'Failed to send verification code';
+      const errorDetails = error.code ? ` (Twilio Error ${error.code})` : '';
+      throw new Error(`${errorMessage}${errorDetails}`);
     }
   }
 
@@ -131,6 +153,7 @@ class TwilioService {
       }
 
       // Check if using Twilio Verify service
+      const client = getTwilioClient();
       if (client && process.env.TWILIO_SERVICE_ID) {
         // Use Twilio Verify to check the code
         const verificationCheck = await client.verify.v2
