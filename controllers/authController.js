@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const TwilioService = require('../services/twilioService');
 const { generateToken } = require('../middleware/auth');
@@ -427,6 +428,163 @@ const changePin = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Send OTP for forgot password
+// @route   POST /api/auth/forgot-password/send-otp
+// @access  Public
+const sendForgotPasswordOtp = asyncHandler(async (req, res) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Phone number is required'
+    });
+  }
+
+  // Check if phone number exists in our system
+  const user = await User.findOne({ phoneNumber });
+  if (!user) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'Phone number not found'
+    });
+  }
+
+  try {
+    const result = await TwilioService.sendVerificationCode(phoneNumber);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification code sent successfully',
+      data: {
+        phoneNumber,
+        twilioSid: result.twilioSid
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+});
+
+// @desc    Verify OTP for forgot password
+// @route   POST /api/auth/forgot-password/verify-otp
+// @access  Public
+const verifyForgotPasswordOtp = asyncHandler(async (req, res) => {
+  const { phoneNumber, verificationCode } = req.body;
+
+  if (!phoneNumber || !verificationCode) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Phone number and verification code are required'
+    });
+  }
+
+  try {
+    const result = await TwilioService.verifyCode(phoneNumber, verificationCode);
+
+    // Find user to get ID
+    const user = await User.findOne({ phoneNumber });
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    // Generate a temporary reset token (expires in 10 minutes)
+    const resetToken = jwt.sign(
+      { id: user._id, type: 'reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP verified successfully',
+      data: {
+        resetToken // User must send this token to reset-pin endpoint
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+});
+
+// @desc    Reset PIN using reset token
+// @route   POST /api/auth/forgot-password/reset-pin
+// @access  Private (Restricted to Reset Token)
+const resetPin = asyncHandler(async (req, res) => {
+  const { newPin } = req.body;
+  // Get token from header
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not authorized, no token'
+    });
+  }
+
+  if (!newPin) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'New PIN is required'
+    });
+  }
+
+  // Validate new PIN format
+  if (!/^\d{4}$/.test(newPin)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'New PIN must be exactly 4 digits'
+    });
+  }
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if it is a reset token
+    if (decoded.type !== 'reset') {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid token type. Please use the token from OTP verification.'
+      });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    // Update PIN
+    user.pin = newPin;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'PIN reset successfully. Please login with your new PIN.'
+    });
+  } catch (error) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Invalid or expired token',
+      error: error.message
+    });
+  }
+});
 
 module.exports = {
   sendPhoneVerification,
@@ -437,5 +595,8 @@ module.exports = {
   checkPhoneExists,
   completeProfile,
   getMe,
-  changePin
+  changePin,
+  sendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  resetPin
 };

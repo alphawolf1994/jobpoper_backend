@@ -9,7 +9,10 @@ const {
   checkPhoneExists,
   completeProfile,
   getMe,
-  changePin
+  changePin,
+  sendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  resetPin
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { uploadProfileImage } = require('../middleware/upload');
@@ -21,6 +24,11 @@ router.post('/verify-phone', verifyPhoneNumber);
 router.post('/register', register);
 router.post('/login', login);
 router.post('/check-phone', checkPhoneExists);
+
+// Forgot Password Flow
+router.post('/forgot-password/send-otp', sendForgotPasswordOtp);
+router.post('/forgot-password/verify-otp', verifyForgotPasswordOtp);
+router.post('/forgot-password/reset-pin', resetPin);
 
 // Protected routes
 router.use(protect); // All routes below this middleware are protected
