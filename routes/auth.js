@@ -12,7 +12,8 @@ const {
   changePin,
   sendForgotPasswordOtp,
   verifyForgotPasswordOtp,
-  resetPin
+  resetPin,
+  deleteAccount
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { uploadProfileImage } = require('../middleware/upload');
@@ -35,5 +36,6 @@ router.use(protect); // All routes below this middleware are protected
 router.get('/me', getMe);
 router.put('/complete-profile', uploadProfileImage, completeProfile);
 router.put('/change-pin', changePin);
+router.delete('/delete-account', deleteAccount);
 
 module.exports = router;

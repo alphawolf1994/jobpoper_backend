@@ -1,6 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Job = require('../models/Job');
+const Location = require('../models/Location');
+const Notification = require('../models/Notification');
+const PhoneVerification = require('../models/PhoneVerification');
 const TwilioService = require('../services/twilioService');
 const { generateToken } = require('../middleware/auth');
 
@@ -586,6 +590,49 @@ const resetPin = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Delete user account and all related data
+// @route   DELETE /api/auth/delete-account
+// @access  Private
+const deleteAccount = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const phoneNumber = req.user.phoneNumber;
+
+  try {
+    // 1. Delete all jobs posted by the user
+    await Job.deleteMany({ postedBy: userId });
+
+    // 2. Delete all locations saved by the user
+    await Location.deleteMany({ user: userId });
+
+    // 3. Delete all notifications for the user
+    await Notification.deleteMany({ recipient: userId });
+
+    // 4. Delete phone verification records
+    await PhoneVerification.deleteMany({ phoneNumber });
+
+    // 5. Delete the user account
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Account and all related data deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete account',
+      error: error.message
+    });
+  }
+});
+
 module.exports = {
   sendPhoneVerification,
   resendPhoneVerification,
@@ -598,5 +645,6 @@ module.exports = {
   changePin,
   sendForgotPasswordOtp,
   verifyForgotPasswordOtp,
-  resetPin
+  resetPin,
+  deleteAccount
 };
