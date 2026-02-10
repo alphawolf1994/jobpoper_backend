@@ -20,7 +20,7 @@ const {
 } = require('../controllers/jobController');
 
 // Public routes
-router.get('/', getAllJobs);
+router.get('/', optionalProtect, getAllJobs);
 router.get('/hot', optionalProtect, getHotJobs);
 router.get('/search/hot', optionalProtect, searchHotJobs);
 router.get('/normal', optionalProtect, getNormalJobs);
